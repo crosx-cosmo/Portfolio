@@ -276,7 +276,7 @@ export async function verifyAdminSessionToken(token?: string | null): Promise<bo
   if (parts.length !== 3) return false;
   const [sessionId, expStr, providedSig] = parts;
   const exp = Number(expStr);
-  if (!sessionId || ! Number.isFinite(exp) || Date.now() > exp) {
+  if (!sessionId || !Number.isFinite(exp) || Date.now() > exp) {
     return false;
   }
 
@@ -297,7 +297,10 @@ export async function verifyAdminSessionToken(token?: string | null): Promise<bo
   }
 
   const cfg = await readAdminAuthConfig();
-  return cfg.activeSessionIds.includes(sessionId);
+  if (cfg.activeSessionIds.includes(`revoked:${sessionId}`)) {
+    return false;
+  }
+  return true;
 }
 
 export async function revokeAdminSessionToken(token?: string | null): Promise<void> {
@@ -305,7 +308,10 @@ export async function revokeAdminSessionToken(token?: string | null): Promise<vo
   const [sessionId] = token.split('.');
   if (!sessionId) return;
   const cfg = await readAdminAuthConfig();
-  cfg.activeSessionIds = cfg.activeSessionIds.filter((id) => id !== sessionId);
+  cfg.activeSessionIds = [
+    `revoked:${sessionId}`,
+    ...cfg.activeSessionIds.filter((id) => id !== sessionId && id !== `revoked:${sessionId}`).slice(0, 39),
+  ];
   await writeAdminAuthConfig(cfg);
 }
 

@@ -363,6 +363,13 @@ async function readLegacyInquiriesForMigration(): Promise<ProjectInquiryRecord[]
 
 async function loadCmsState(): Promise<CmsStoreState> {
   if (global._crosxCmsStateMemory) {
+    const cfg = resolveNeonConfig();
+    const ageMs = Date.now() - new Date(global._crosxCmsStateMemory.updatedAt).getTime();
+    if (cfg.configured && cfg.protocolMode === 'neon-serverless-sql' && ageMs > 2000) {
+      const refreshed = await hydrateFromNeonIfAvailable(global._crosxCmsStateMemory);
+      refreshed.updatedAt = new Date().toISOString();
+      global._crosxCmsStateMemory = refreshed;
+    }
     return global._crosxCmsStateMemory;
   }
 
