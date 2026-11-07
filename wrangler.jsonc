@@ -3,10 +3,16 @@
   "name": "crosx-dev-studio",
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-03-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
+  },
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://crosx.in"
   },
   "observability": {
     "enabled": true
