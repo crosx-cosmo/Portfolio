@@ -1,0 +1,183 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-display: var(--font-space-grotesk), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  :root {
+    --bg-canvas: #F5F3EE;
+    --bg-surface: #FDFCF9;
+    --bg-alt: #ECE8DF;
+    --text-primary: #111110;
+    --text-secondary: #4A4843;
+    --border-hairline: #D5D0C5;
+    color-scheme: light;
+  }
+
+  .dark {
+    --bg-canvas: #05060B;
+    --bg-surface: #0B0E17;
+    --bg-alt: #080A12;
+    --text-primary: #F4F1EA;
+    --text-secondary: #A3A8B8;
+    --border-hairline: #1E2231;
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-space-grotesk), -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.03em;
+    font-feature-settings: "ss01", "ss02";
+  }
+
+  .font-serif-editorial {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    letter-spacing: -0.005em;
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "zero", "ss01";
+  }
+}
+
+@layer components {
+  /* Hand-crafted Primary Tactile Pill CTA:
+     Combines rounded-edge contour ring expansion, top specular highlight,
+     bottom physical bevel, and GPU-accelerated 3D lift + press transforms. */
+  .cta-tactile-primary {
+    position: relative;
+    border-radius: 9999px;
+    transform: translate3d(0, 0, 0) scale(1);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.24),
+      inset 0 -2px 0 0 rgba(0, 0, 0, 0.28),
+      0 0 0 0px rgba(37, 68, 232, 0),
+      0 4px 12px -2px rgba(17, 17, 16, 0.18),
+      0 2px 4px -1px rgba(17, 17, 16, 0.1);
+    transition:
+      transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, box-shadow;
+  }
+
+  .cta-tactile-primary:hover {
+    transform: translate3d(0, -2.5px, 0) scale(1.016);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.42),
+      inset 0 -2px 0 0 rgba(10, 20, 80, 0.36),
+      0 0 0 3.5px rgba(37, 68, 232, 0.22),
+      0 14px 28px -6px rgba(37, 68, 232, 0.48),
+      0 6px 12px -3px rgba(17, 17, 16, 0.22);
+  }
+
+  .dark .cta-tactile-primary:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.45),
+      inset 0 -2px 0 0 rgba(8, 14, 52, 0.45),
+      0 0 0 3.5px rgba(94, 122, 255, 0.28),
+      0 16px 32px -6px rgba(37, 68, 232, 0.58),
+      0 6px 14px -3px rgba(0, 0, 0, 0.5);
+  }
+
+  .cta-tactile-primary:active {
+    transform: translate3d(0, 0.5px, 0) scale(0.986);
+    box-shadow:
+      inset 0 1px 2px 0 rgba(0, 0, 0, 0.25),
+      0 0 0 2px rgba(37, 68, 232, 0.32),
+      0 4px 10px -2px rgba(37, 68, 232, 0.3);
+    transition-duration: 100ms;
+  }
+
+  /* Hand-crafted Secondary / Outlined Tactile Pill CTA:
+     Subtle machined rim with expanding rounded outer ring and smooth elevation. */
+  .cta-tactile-secondary {
+    position: relative;
+    border-radius: 9999px;
+    transform: translate3d(0, 0, 0) scale(1);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.65),
+      inset 0 -1.5px 0 0 rgba(17, 17, 16, 0.06),
+      0 0 0 0px rgba(37, 68, 232, 0),
+      0 2px 8px -2px rgba(17, 17, 16, 0.07);
+    transition:
+      transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, box-shadow;
+  }
+
+  .dark .cta-tactile-secondary {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.09),
+      inset 0 -1.5px 0 0 rgba(0, 0, 0, 0.5),
+      0 0 0 0px rgba(94, 122, 255, 0),
+      0 4px 12px -3px rgba(0, 0, 0, 0.45);
+  }
+
+  .cta-tactile-secondary:hover {
+    transform: translate3d(0, -2px, 0) scale(1.014);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1.5px 0 0 rgba(37, 68, 232, 0.15),
+      0 0 0 3px rgba(37, 68, 232, 0.16),
+      0 12px 24px -6px rgba(37, 68, 232, 0.22),
+      0 4px 10px -2px rgba(17, 17, 16, 0.08);
+  }
+
+  .dark .cta-tactile-secondary:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgba(140, 165, 255, 0.26),
+      inset 0 -1.5px 0 0 rgba(10, 20, 80, 0.4),
+      0 0 0 3px rgba(94, 122, 255, 0.24),
+      0 14px 28px -6px rgba(37, 68, 232, 0.34),
+      0 4px 12px -2px rgba(0, 0, 0, 0.55);
+  }
+
+  .cta-tactile-secondary:active {
+    transform: translate3d(0, 0.5px, 0) scale(0.988);
+    box-shadow:
+      inset 0 1px 2px 0 rgba(0, 0, 0, 0.15),
+      0 0 0 2px rgba(37, 68, 232, 0.24),
+      0 3px 8px -2px rgba(37, 68, 232, 0.18);
+    transition-duration: 100ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .cta-tactile-primary,
+  .cta-tactile-secondary {
+    transition: none;
+  }
+  .cta-tactile-primary:hover,
+  .cta-tactile-secondary:hover,
+  .cta-tactile-primary:active,
+  .cta-tactile-secondary:active {
+    transform: none;
+  }
+}

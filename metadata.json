@@ -1,0 +1,6 @@
+{
+  "name": "CROSX DEV STUDIO",
+  "description": "CROSX DEV STUDIO, founded by IRON CLAD, builds custom Websites, SaaS Web Apps, NestJS + Neon PostgreSQL Backends, and React Native + Expo Mobile Apps.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
