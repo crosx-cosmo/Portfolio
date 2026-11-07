@@ -95,7 +95,7 @@ export function computeCardTilt(
   }
 
   const rawX = (clientX - rect.left) / rect.width - 0.5;
-  const rawY = (clientX - rect.left >= 0 ? (clientY - rect.top) / rect.height - 0.5 : (clientY - rect.top) / rect.height - 0.5);
+  const rawY = (clientY - rect.top) / rect.height - 0.5;
 
   const normX = Math.max(-0.5, Math.min(0.5, rawX));
   const normY = Math.max(-0.5, Math.min(0.5, rawY));

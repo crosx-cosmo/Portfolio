@@ -138,10 +138,6 @@ export function resolveNeonConfig(): {
   };
 }
 
-export function isNeonConfigured(): boolean {
-  return resolveNeonConfig().configured;
-}
-
 /**
  * Executes a parameterized SQL query against Neon's Serverless HTTP SQL endpoint (`https://<host>/sql`).
  */

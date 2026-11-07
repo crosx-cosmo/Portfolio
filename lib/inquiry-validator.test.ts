@@ -166,7 +166,7 @@ test('CMS ticket numbering, tracking token verification, dynamic form validation
     validateFormFieldDefinition,
     validateDynamicSubmission,
     sanitizePublicTicketView,
-  } = await import('./cms-store');
+  } = await import('./cms-schema');
   const {
     generateTrackingToken,
     hashTrackingToken,

@@ -863,30 +863,47 @@ export default function CrosxAdminDashboardPage() {
     >
       {/* Left Navigation Sidebar */}
       <aside className="w-full lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-[#D5D0C5] dark:border-[#1E2231] bg-[#ECE8DF] dark:bg-[#080B14] flex flex-col justify-between lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto">
-        <div className="p-5 space-y-6">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#2544E8]/40 bg-[#2544E8]/15 text-xs font-mono font-bold text-[#2544E8] dark:text-indigo-300">
+        <div className="p-4 sm:p-5 space-y-3.5 lg:space-y-6">
+          <div className="flex items-center justify-between gap-2">
+            <Link href="/" className="flex items-center gap-2.5 group min-w-0">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#2544E8]/40 bg-[#2544E8]/15 text-xs font-mono font-bold text-[#2544E8] dark:text-indigo-300 shrink-0">
                 IC
               </span>
-              <div>
-                <span className="block text-sm font-extrabold font-display tracking-tight">
+              <div className="min-w-0">
+                <span className="block text-sm font-extrabold font-display tracking-tight truncate">
                   CROSX ADMIN
                 </span>
-                <span className="block text-[10px] font-mono text-[#6E6A61] dark:text-[#8E93A6]">
+                <span className="block text-[10px] font-mono text-[#6E6A61] dark:text-[#8E93A6] truncate">
                   IRON CLAD · CMS v2.6
                 </span>
               </div>
             </Link>
 
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#C8C2B5] dark:border-[#242C42] bg-[#FDFCF9] dark:bg-[#101424] cursor-pointer"
-            >
-              {isDark ? <Sun className="h-3.5 w-3.5 text-amber-400" /> : <Moon className="h-3.5 w-3.5" />}
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Link
+                href="/"
+                className="lg:hidden inline-flex items-center gap-1 rounded-lg border border-[#C8C2B5] dark:border-[#242C42] bg-[#FDFCF9] dark:bg-[#101424] px-2.5 py-1.5 text-[11px] font-mono text-[#111110] dark:text-[#E5E9F2]"
+              >
+                <span>Site</span>
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="lg:hidden inline-flex items-center justify-center rounded-lg border border-[#D94E28]/40 bg-[#D94E28]/10 p-1.5 text-xs font-mono text-[#D94E28] cursor-pointer"
+                aria-label="Logout"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#C8C2B5] dark:border-[#242C42] bg-[#FDFCF9] dark:bg-[#101424] cursor-pointer"
+              >
+                {isDark ? <Sun className="h-3.5 w-3.5 text-amber-400" /> : <Moon className="h-3.5 w-3.5" />}
+              </button>
+            </div>
           </div>
 
           <nav aria-label="Admin Console Navigation" className="flex lg:flex-col gap-1.5 overflow-x-auto pb-1 lg:pb-0">
@@ -920,13 +937,13 @@ export default function CrosxAdminDashboardPage() {
                   key={item.id}
                   type="button"
                   onClick={() => setActiveTab(item.id as AdminTab)}
-                  className={`flex items-center justify-between gap-2.5 rounded-lg px-3.5 py-2.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 lg:px-3.5 lg:py-2.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                     active
                       ? 'bg-[#111110] text-white dark:bg-[#2544E8] dark:text-white font-semibold'
                       : 'text-[#4A4843] dark:text-[#A3A8B8] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[#111110] dark:hover:text-white'
                   }`}
                 >
-                  <span className="inline-flex items-center gap-2.5">
+                  <span className="inline-flex items-center gap-2">
                     <Icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>
                   </span>
@@ -949,7 +966,7 @@ export default function CrosxAdminDashboardPage() {
           </nav>
         </div>
 
-        <div className="p-5 border-t border-[#D5D0C5] dark:border-[#1E2231] space-y-3">
+        <div className="hidden lg:block p-5 border-t border-[#D5D0C5] dark:border-[#1E2231] space-y-3">
           <div className="flex items-center justify-between text-[11px] font-mono text-[#6E6A61] dark:text-[#8E93A6]">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -982,16 +999,16 @@ export default function CrosxAdminDashboardPage() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Operational Bar */}
-        <header className="sticky top-0 z-20 border-b border-[#D5D0C5] dark:border-[#1E2231] bg-[#F5F3EE]/95 dark:bg-[#05060B]/95 backdrop-blur-md px-5 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold font-display tracking-tight">
+        <header className="sticky top-0 z-20 border-b border-[#D5D0C5] dark:border-[#1E2231] bg-[#F5F3EE]/95 dark:bg-[#05060B]/95 backdrop-blur-md px-4 sm:px-8 py-3.5 sm:py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-xl font-bold font-display tracking-tight truncate">
               {activeTab === 'dashboard' && 'Executive Overview & Live Studio Telemetry'}
               {activeTab === 'projects' && 'Project Portfolio Management CMS'}
               {activeTab === 'ledger' && 'Dynamic Project Specifications Ledger (Form Builder)'}
               {activeTab === 'tickets' && 'Client Inquiries, Support Tickets & Two-Way Messaging'}
               {activeTab === 'settings' && 'Studio Security & Neon Database Configuration'}
             </h1>
-            <p className="text-xs font-mono text-[#6E6A61] dark:text-[#8E93A6]">
+            <p className="text-[11px] sm:text-xs font-mono text-[#6E6A61] dark:text-[#8E93A6] truncate">
               CROSX DEV STUDIO® · Founded by IRON CLAD · Real-time state synchronization active
             </p>
           </div>
@@ -1026,14 +1043,14 @@ export default function CrosxAdminDashboardPage() {
           </div>
         </header>
 
-        <main className="flex-1 p-5 sm:p-8 space-y-8">
+        <main className="flex-1 p-4 sm:p-8 space-y-6 sm:space-y-8">
           {/* ====================================================================
            * TAB 1: DASHBOARD OVERVIEW
            * ================================================================== */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {/* 6 KPI Stat Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
                 {[
                   {
                     label: 'Total Projects',

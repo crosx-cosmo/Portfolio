@@ -169,16 +169,16 @@ export default function CrosxDevStudioPage() {
           {/* Zone 1: Circular Emblem Badge + Studio & Founder Identity */}
           <a
             href="#home"
-            className="flex items-center gap-2.5 sm:gap-3 whitespace-nowrap shrink-0 group"
+            className="flex items-center gap-2 sm:gap-3 min-w-0 shrink group"
           >
-            <span className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-[#2544E8]/40 dark:border-indigo-400/40 bg-[#2544E8]/10 dark:bg-indigo-500/15 text-xs font-mono font-bold text-[#2544E8] dark:text-indigo-300">
+            <span className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-[#2544E8]/40 dark:border-indigo-400/40 bg-[#2544E8]/10 dark:bg-indigo-500/15 text-xs font-mono font-bold text-[#2544E8] dark:text-indigo-300 shrink-0">
               IC
             </span>
-            <div className="leading-tight">
-              <span className="block text-sm sm:text-base font-extrabold tracking-tight font-display text-[#111110] dark:text-white">
+            <div className="leading-tight min-w-0">
+              <span className="block text-sm sm:text-base font-extrabold tracking-tight font-display text-[#111110] dark:text-white truncate">
                 CROSX DEV STUDIO<span className="text-[#2544E8] dark:text-indigo-400">®</span>
               </span>
-              <span className="block text-[10px] font-mono text-[#5C5952] dark:text-[#949CB0]">
+              <span className="block text-[9.5px] sm:text-[10px] font-mono text-[#5C5952] dark:text-[#949CB0] truncate">
                 IRON CLAD · Senior Project Developer
               </span>
             </div>
@@ -350,7 +350,7 @@ export default function CrosxDevStudioPage() {
               {/* Left Column (6 cols): Developer Portfolio Typography & Pill Actions */}
               <div className="lg:col-span-6 space-y-6 z-10">
                 {/* Status Pill */}
-                <div className="inline-flex items-center gap-2.5 rounded-full border border-[#C8C2B5] dark:border-white/12 bg-[#FDFCF9] dark:bg-[#0D1220] px-3.5 py-1.5 text-xs font-medium text-[#2E2D2A] dark:text-[#D5DBE8]">
+                <div className="inline-flex max-w-full items-center gap-2 sm:gap-2.5 rounded-full border border-[#C8C2B5] dark:border-white/12 bg-[#FDFCF9] dark:bg-[#0D1220] px-3 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-medium text-[#2E2D2A] dark:text-[#D5DBE8]">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
                   <span className="truncate">
                     Available for new projects · Best-in-Class at Affordable Prices
@@ -553,7 +553,7 @@ export default function CrosxDevStudioPage() {
 
                 {/* Right 3-Row Visual Service Breakdown */}
                 <div className="lg:col-span-6 divide-y divide-[#E2DDD2] dark:divide-[#1E2231] border-t border-b border-[#E2DDD2] dark:border-[#1E2231]">
-                  <div className="py-4 flex items-center justify-between gap-4">
+                  <div className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
                     <div className="min-w-0">
                       <p className="text-xs font-mono text-[#2544E8] dark:text-[#7C93FF]">
                         01 / Cross-Platform Mobile
@@ -574,12 +574,12 @@ export default function CrosxDevStudioPage() {
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    <p className="text-xs text-[#5C5952] dark:text-[#949CB0] max-w-[190px] text-right">
+                    <p className="text-xs text-[#5C5952] dark:text-[#949CB0] sm:max-w-[190px] sm:text-right">
                       Native iOS &amp; Android apps built with React Native + Expo.
                     </p>
                   </div>
 
-                  <div className="py-4 flex items-center justify-between gap-4">
+                  <div className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
                     <div className="min-w-0">
                       <p className="text-xs font-mono text-[#2544E8] dark:text-[#7C93FF]">
                         02 / Websites &amp; Web Apps
@@ -600,12 +600,12 @@ export default function CrosxDevStudioPage() {
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    <p className="text-xs text-[#5C5952] dark:text-[#949CB0] max-w-[190px] text-right">
+                    <p className="text-xs text-[#5C5952] dark:text-[#949CB0] sm:max-w-[190px] sm:text-right">
                       JavaScript, TypeScript, Vite, TanStack, React, Next.js &amp; Tailwind.
                     </p>
                   </div>
 
-                  <div className="py-4 flex items-center justify-between gap-4">
+                  <div className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
                     <div className="min-w-0">
                       <p className="text-xs font-mono text-[#2544E8] dark:text-[#7C93FF]">
                         03 / Full-Stack &amp; APIs
@@ -626,7 +626,7 @@ export default function CrosxDevStudioPage() {
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    <p className="text-xs text-[#5C5952] dark:text-[#949CB0] max-w-[190px] text-right">
+                    <p className="text-xs text-[#5C5952] dark:text-[#949CB0] sm:max-w-[190px] sm:text-right">
                       Scalable NestJS, Node.js, Neon DB &amp; PostgreSQL production backends.
                     </p>
                   </div>
@@ -667,7 +667,7 @@ export default function CrosxDevStudioPage() {
               <div
                 role="group"
                 aria-label="Filter projects by engineering category"
-                className="flex flex-wrap items-center gap-1.5 rounded-full border border-[#C8C2B5] dark:border-[#1E2231] bg-[#F5F3EE] dark:bg-[#0D101B] p-1.5 self-start lg:self-auto"
+                className="flex flex-wrap items-center gap-1.5 rounded-2xl sm:rounded-full border border-[#C8C2B5] dark:border-[#1E2231] bg-[#F5F3EE] dark:bg-[#0D101B] p-1.5 self-start lg:self-auto"
               >
                 {[
                   'All',
@@ -1027,7 +1027,7 @@ export default function CrosxDevStudioPage() {
                 <div
                   role="tablist"
                   aria-label="Technology Stack Layers"
-                  className="flex flex-wrap items-center gap-1.5 rounded-full border border-[#C8C2B5] dark:border-[#1E2231] bg-[#F5F3EE] dark:bg-[#0B0E17] p-1.5 self-start"
+                  className="flex flex-wrap items-center gap-1.5 rounded-2xl sm:rounded-full border border-[#C8C2B5] dark:border-[#1E2231] bg-[#F5F3EE] dark:bg-[#0B0E17] p-1.5 self-start"
                 >
                   {TECH_STACK_ARSENAL.map((layer) => {
                     const isSelected = layer.id === activeStackCategory.id;
@@ -1402,7 +1402,7 @@ export default function CrosxDevStudioPage() {
                     type="button"
                     aria-selected={isCurrent}
                     onClick={() => setActiveProcessIndex(idx)}
-                    className={`rounded-md border p-4 text-left transition-colors cursor-pointer ${
+                    className={`last:col-span-2 sm:last:col-span-1 rounded-md border p-4 text-left transition-colors cursor-pointer ${
                       isCurrent
                         ? 'border-[#111110] dark:border-[#2544E8] bg-[#111110] dark:bg-[#2544E8] text-[#F5F3EE] dark:text-white'
                         : 'border-[#C8C2B5] dark:border-[#1E2231] bg-[#FDFCF9] dark:bg-[#0B0E17] text-[#2E2D2A] dark:text-[#D5D8E2] hover:border-[#2544E8]'
