@@ -43,7 +43,6 @@ export const ParallaxSection = React.memo(function ParallaxSection({
   const keyframes = getSectionParallaxKeyframes(prefersReducedMotion, offsetPx);
 
   const y = useTransform(scrollYProgress, keyframes.inputRange, keyframes.yRange);
-  const scale = useTransform(scrollYProgress, keyframes.inputRange, keyframes.scaleRange);
   const opacity = useTransform(scrollYProgress, keyframes.inputRange, keyframes.opacityRange);
 
   return (
@@ -57,7 +56,6 @@ export const ParallaxSection = React.memo(function ParallaxSection({
       <motion.div
         style={{
           y,
-          scale,
           opacity,
         }}
         className="will-change-transform"

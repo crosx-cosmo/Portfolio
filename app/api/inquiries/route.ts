@@ -20,7 +20,6 @@ export async function GET() {
     storageEngine,
     neonTelemetry,
     count: inquiries.length,
-    inquiries,
     formFields,
   });
 }

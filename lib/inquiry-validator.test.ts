@@ -273,3 +273,172 @@ test('CMS ticket numbering, tracking token verification, dynamic form validation
   assert.equal('adminTrackingTokenRef' in publicView, false);
 });
 
+test('Neon Auth (Managed Better Auth) enforces admin allowlist, rejects invalid passwords, supports password reset, and manages sessions', async () => {
+  const {
+    isEmailAuthorizedAdmin,
+    signInNeonAdminWithEmailPassword,
+    requestNeonAdminVerificationToken,
+    resetNeonAdminPasswordWithToken,
+    getAdminSessionFromToken,
+    revokeAdminSessionToken,
+  } = await import('./admin-auth');
+
+  // 1. Allowlist verification
+  assert.equal(isEmailAuthorizedAdmin('admin@crosx.in'), true);
+  assert.equal(isEmailAuthorizedAdmin('taskwalaconnect@gmail.com'), true);
+  assert.equal(isEmailAuthorizedAdmin('unauthorized-user@example.com'), false);
+
+  // 2. Unauthorized user rejection (403)
+  const unauthorizedAttempt = await signInNeonAdminWithEmailPassword({
+    email: 'intruder@example.com',
+    password: 'SomePassword123!',
+  });
+  assert.equal(unauthorizedAttempt.ok, false);
+  assert.equal(unauthorizedAttempt.status, 403);
+  assert.equal(unauthorizedAttempt.code, 'UNAUTHORIZED_ADMIN_EMAIL');
+
+  // 3. Invalid password rejection for allowlisted admin (401)
+  const wrongPassAttempt = await signInNeonAdminWithEmailPassword({
+    email: 'admin@crosx.in',
+    password: 'DefinitelyWrongPassword999!',
+  });
+  assert.equal(wrongPassAttempt.ok, false);
+  assert.equal(wrongPassAttempt.status, 401);
+  assert.equal(wrongPassAttempt.code, 'INVALID_CREDENTIALS');
+
+  // 4. Password reset flow via neon_auth.verification
+  const resetReq = await requestNeonAdminVerificationToken({
+    email: 'admin@crosx.in',
+    purpose: 'password-reset',
+  });
+  assert.equal(resetReq.ok, true);
+  assert.ok(resetReq.verificationCode?.startsWith('NATH-'));
+
+  const resetComplete = await resetNeonAdminPasswordWithToken({
+    email: 'admin@crosx.in',
+    verificationCode: resetReq.verificationCode,
+    newPassword: 'CrosxNeonAdmin#2026',
+  });
+  assert.equal(resetComplete.ok, true);
+
+  // 5. Authorized admin login with verified password
+  const validLogin = await signInNeonAdminWithEmailPassword({
+    email: 'admin@crosx.in',
+    password: 'CrosxNeonAdmin#2026',
+  });
+  assert.equal(validLogin.ok, true);
+  assert.equal(validLogin.status, 200);
+  assert.ok(validLogin.sessionToken);
+  assert.equal(validLogin.user?.email, 'admin@crosx.in');
+  assert.equal(validLogin.user?.role, 'admin');
+
+  // 6. Session persistence verification & logout revocation
+  const activeSession = await getAdminSessionFromToken(validLogin.sessionToken);
+  assert.equal(activeSession.authenticated, true);
+  assert.equal(activeSession.user?.email, 'admin@crosx.in');
+
+  await revokeAdminSessionToken(validLogin.sessionToken);
+  const afterLogout = await getAdminSessionFromToken(validLogin.sessionToken);
+  assert.equal(afterLogout.authenticated, false);
+});
+
+test('Carousel engine computes circular indices, steps seamlessly, resolves horizontal swipes, and gates autoplay', async () => {
+  const {
+    computeCarouselIndices,
+    stepCarouselIndex,
+    resolveSwipeAction,
+    shouldCarouselAutoplayRun,
+    HERO_ENTRANCE_CHOREOGRAPHY,
+    CAROUSEL_SWIPE_TRANSITION_SEC,
+    CAROUSEL_SWIPE_EASING,
+    CAROUSEL_SWIPE_OFFSET_PX,
+    DEFAULT_SWIPE_THRESHOLD_PX,
+  } = await import('./carousel-engine');
+
+  // 0. Responsive 350ms ease-out swipe animation parameters
+  assert.equal(CAROUSEL_SWIPE_TRANSITION_SEC, 0.35);
+  assert.equal(CAROUSEL_SWIPE_EASING, 'easeOut');
+  assert.equal(CAROUSEL_SWIPE_OFFSET_PX, 20);
+  assert.equal(DEFAULT_SWIPE_THRESHOLD_PX, 28);
+
+  // 1. Circular 3-project index calculation
+  assert.deepEqual(computeCarouselIndices(0, 3), {
+    prevIndex: 2,
+    activeIndex: 0,
+    nextIndex: 1,
+    total: 3,
+  });
+  assert.deepEqual(computeCarouselIndices(2, 3), {
+    prevIndex: 1,
+    activeIndex: 2,
+    nextIndex: 0,
+    total: 3,
+  });
+
+  // 2. Seamless forward and backward stepping
+  assert.deepEqual(stepCarouselIndex(2, 1, 3), { nextActiveIndex: 0, direction: 1 });
+  assert.deepEqual(stepCarouselIndex(0, -1, 3), { nextActiveIndex: 2, direction: -1 });
+
+  // 3. Swipe gesture resolution (fast 28px default threshold, never hijacks vertical scroll)
+  assert.equal(resolveSwipeAction(-32, 6), 'next');
+  assert.equal(resolveSwipeAction(34, 8), 'prev');
+  assert.equal(resolveSwipeAction(-60, 90), 'none'); // predominantly vertical scroll
+  assert.equal(resolveSwipeAction(-18, 2), 'none'); // below threshold
+
+  // 4. Intelligent autoplay pause/resume state machine
+  const baseGate = {
+    isManuallyPaused: false,
+    isHovered: false,
+    isFocusWithin: false,
+    isDragging: false,
+    isInViewport: true,
+    prefersReducedMotion: false,
+    isModalOpen: false,
+  };
+  assert.equal(shouldCarouselAutoplayRun(baseGate), true);
+  assert.equal(shouldCarouselAutoplayRun({ ...baseGate, isHovered: true }), false);
+  assert.equal(shouldCarouselAutoplayRun({ ...baseGate, isFocusWithin: true }), false);
+  assert.equal(shouldCarouselAutoplayRun({ ...baseGate, isManuallyPaused: true }), false);
+  assert.equal(shouldCarouselAutoplayRun({ ...baseGate, isInViewport: false }), false);
+  assert.equal(shouldCarouselAutoplayRun({ ...baseGate, prefersReducedMotion: true }), false);
+  assert.equal(shouldCarouselAutoplayRun({ ...baseGate, isModalOpen: true }), false);
+
+  // 5. Hero entrance choreography stages
+  assert.equal(HERO_ENTRANCE_CHOREOGRAPHY.length, 7);
+  assert.ok(HERO_ENTRANCE_CHOREOGRAPHY.every((s) => s.durationSec <= 0.75));
+});
+
+test('Scope estimator computes deterministic timeline ranges, USD bounds, and mapped commission scopes', async () => {
+  const { estimateProjectScope } = await import('./scope-estimator');
+
+  const websiteSprint = estimateProjectScope({
+    platformId: 'website',
+    moduleIds: [],
+    cadenceId: 'sprint',
+  });
+  assert.equal(websiteSprint.mappedServiceScope, 'Website Development (Next.js / Vite / Tailwind)');
+  assert.equal(websiteSprint.mappedTimeline, 'Immediate (2–4 Weeks)');
+  assert.equal(websiteSprint.estimatedWeeksMin, 2);
+  assert.ok(websiteSprint.estimatedWeeksMax >= 3);
+  assert.ok(websiteSprint.estimatedBudgetMaxUsd > websiteSprint.estimatedBudgetMinUsd);
+
+  const ecosystemWithModules = estimateProjectScope({
+    platformId: 'ecosystem',
+    moduleIds: ['neon-postgres', 'auth-rbac', 'admin-cms'],
+    cadenceId: 'comprehensive',
+  });
+  assert.equal(
+    ecosystemWithModules.mappedServiceScope,
+    'Full-Stack Web App (React / TanStack / Next.js)'
+  );
+  assert.equal(ecosystemWithModules.mappedTimeline, 'Comprehensive (3+ Months)');
+  assert.ok(ecosystemWithModules.estimatedWeeksMin > websiteSprint.estimatedWeeksMin);
+  assert.ok(ecosystemWithModules.estimatedBudgetMinUsd > websiteSprint.estimatedBudgetMinUsd);
+  assert.ok(ecosystemWithModules.recommendedStack.includes('Managed Auth · RBAC'));
+  assert.ok(ecosystemWithModules.formattedBrief.includes('[Scope Estimator Configuration]'));
+});
+
+
+
+
+

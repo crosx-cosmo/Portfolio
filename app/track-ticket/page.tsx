@@ -21,6 +21,7 @@ import {
   Lock,
   MessageSquare,
   User,
+  Sparkles,
 } from 'lucide-react';
 
 export default function TrackTicketPage() {
@@ -89,7 +90,6 @@ export default function TrackTicketPage() {
     []
   );
 
-  // Check URL query parameters on mount (`?ticket=CROSX-2026-00001&token=trk_...`)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let active = true;
@@ -131,7 +131,6 @@ export default function TrackTicketPage() {
     };
   }, []);
 
-  // Real-time background polling when a ticket is open
   useEffect(() => {
     if (!activeCredentials) return;
     const interval = window.setInterval(() => {
@@ -190,14 +189,14 @@ export default function TrackTicketPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F5F3EE] dark:bg-[#05060B] text-[#111110] dark:text-[#F4F1EA]">
+    <div className="min-h-screen flex flex-col bg-[#FAF9F6] dark:bg-[#090909] text-[#171717] dark:text-[#F8F8F8] editorial-grid-bg">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-[#D5D0C5] dark:border-[#1E2231] bg-[#F5F3EE]/95 dark:bg-[#05060B]/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5 sm:px-6">
+      <header className="sticky top-0 z-30 border-b border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6]/90 dark:bg-[#090909]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-6">
           <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 text-xs font-mono text-[#4A4843] dark:text-[#9CA5BA] hover:text-[#2544E8] dark:hover:text-white transition-colors"
+              className="inline-flex items-center gap-2 text-xs font-mono text-[#666666] dark:text-[#A1A1A1] hover:text-[#FF4B1F] dark:hover:text-[#FF4B1F] transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Back to CROSX DEV STUDIO®</span>
@@ -205,38 +204,45 @@ export default function TrackTicketPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <span className="hidden sm:inline-block text-[11px] font-mono text-[#666666] dark:text-[#A1A1A1]">
+              FOUNDED BY IRON CLAD
+            </span>
             <button
               type="button"
               onClick={toggleTheme}
               aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#C8C2B5] dark:border-[#252C40] bg-[#FDFCF9] dark:bg-[#101424] text-[#111110] dark:text-[#F4F1EA] cursor-pointer"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#171717] text-[#171717] dark:text-[#F8F8F8] hover:border-[#FF4B1F] transition-colors cursor-pointer"
             >
-              {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
+              {isDark ? <Sun className="h-4 w-4 text-[#FF4B1F]" /> : <Moon className="h-4 w-4" />}
             </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 mx-auto w-full max-w-6xl px-5 py-10 sm:px-6 sm:py-14">
-        <div className="mb-8">
-          <p className="text-xs font-mono uppercase tracking-[0.18em] text-[#D94E28] mb-2">
-            CLIENT SUPPORT &amp; SPECIFICATION TRACKING PORTAL
-          </p>
-          <h1 className="text-3xl sm:text-4xl font-bold font-display tracking-tight">
-            Track Your Project Ticket &amp; Conversation
+      <main className="flex-1 mx-auto w-full max-w-6xl px-5 py-12 sm:px-6 sm:py-16">
+        <div className="mb-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#FF4B1F]/30 bg-[#FF4B1F]/10 px-3.5 py-1 text-[11px] font-mono uppercase tracking-[0.18em] text-[#FF4B1F] mb-4">
+            <Sparkles className="h-3 w-3" />
+            <span>CLIENT SUPPORT &amp; SPECIFICATION TRACKING PORTAL</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-bold font-display tracking-tight leading-[1.06]">
+            Track Your Project Ticket &amp;{' '}
+            <span className="font-serif-editorial italic font-normal text-[#FF4B1F]">
+              Live Conversation.
+            </span>
           </h1>
-          <p className="mt-2 text-sm text-[#4A4843] dark:text-[#A3A8B8] max-w-2xl">
-            Enter your unique Ticket ID (<span className="font-mono">CROSX-2026-XXXXX</span>) and your Security Tracking Token (<span className="font-mono">trk_...</span>) to inspect live status updates and exchange messages directly with IRON CLAD.
+          <p className="mt-3 text-sm sm:text-base text-[#666666] dark:text-[#A1A1A1] max-w-2xl leading-relaxed">
+            Enter your unique Ticket ID (<span className="font-mono text-[#171717] dark:text-[#F8F8F8]">CROSX-2026-XXXXX</span>) and your Security Tracking Token (<span className="font-mono text-[#FF4B1F]">trk_...</span>) to inspect live status updates and exchange messages directly with IRON CLAD.
           </p>
         </div>
 
         {/* Credential Verification Bar */}
-        <div className="rounded-xl border border-[#D5D0C5] dark:border-[#1E2231] bg-[#FDFCF9] dark:bg-[#0B0E17] p-5 sm:p-6 shadow-sm mb-8">
-          <form onSubmit={handleLookupSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        <div className="rounded-[24px] border border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#141414] p-6 sm:p-8 shadow-sm mb-10">
+          <form onSubmit={handleLookupSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
             <div className="md:col-span-4">
               <label
                 htmlFor="track-ticket-id"
-                className="block text-xs font-mono uppercase tracking-wider text-[#4A4843] dark:text-[#B8B3A8] mb-1.5"
+                className="block text-xs font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1] mb-2"
               >
                 Ticket Reference ID *
               </label>
@@ -247,14 +253,14 @@ export default function TrackTicketPage() {
                 value={ticketNumberInput}
                 onChange={(e) => setTicketNumberInput(e.target.value.toUpperCase())}
                 placeholder="CROSX-2026-00001"
-                className="w-full rounded-md border border-[#C8C2B5] dark:border-[#282B3A] bg-[#F5F3EE] dark:bg-[#10131E] px-3.5 py-2.5 text-sm font-mono text-[#111110] dark:text-[#F4F1EA] placeholder:text-[#8E93A6] focus:border-[#2544E8] focus:outline-none"
+                className="w-full rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#090909] px-4 py-3 text-sm font-mono text-[#171717] dark:text-[#F8F8F8] placeholder:text-[#A1A1A1] focus:border-[#FF4B1F] focus:outline-none transition-colors"
               />
             </div>
 
             <div className="md:col-span-5">
               <label
                 htmlFor="track-ticket-token"
-                className="block text-xs font-mono uppercase tracking-wider text-[#4A4843] dark:text-[#B8B3A8] mb-1.5"
+                className="block text-xs font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1] mb-2"
               >
                 Security Tracking Token *
               </label>
@@ -265,7 +271,7 @@ export default function TrackTicketPage() {
                 value={trackingTokenInput}
                 onChange={(e) => setTrackingTokenInput(e.target.value)}
                 placeholder="trk_..."
-                className="w-full rounded-md border border-[#C8C2B5] dark:border-[#282B3A] bg-[#F5F3EE] dark:bg-[#10131E] px-3.5 py-2.5 text-sm font-mono text-[#111110] dark:text-[#F4F1EA] placeholder:text-[#8E93A6] focus:border-[#2544E8] focus:outline-none"
+                className="w-full rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#090909] px-4 py-3 text-sm font-mono text-[#171717] dark:text-[#F8F8F8] placeholder:text-[#A1A1A1] focus:border-[#FF4B1F] focus:outline-none transition-colors"
               />
             </div>
 
@@ -273,7 +279,7 @@ export default function TrackTicketPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="cta-tactile-primary w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#111110] text-white dark:bg-[#2544E8] px-5 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold hover:bg-[#2544E8] dark:hover:bg-[#3B5BFF] disabled:opacity-50 cursor-pointer"
+                className="cta-tactile-primary w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#FF4B1F] hover:bg-[#F04424] text-white px-6 py-3 text-xs font-mono uppercase tracking-wider font-semibold disabled:opacity-50 cursor-pointer"
               >
                 <Lock className="h-3.5 w-3.5" />
                 <span>{loading ? 'Verifying...' : 'Verify & Open'}</span>
@@ -285,7 +291,7 @@ export default function TrackTicketPage() {
             <div
               role="alert"
               data-testid="track-ticket-error"
-              className="mt-4 flex items-center gap-2.5 rounded-lg border border-[#D94E28] bg-[#D94E28]/10 px-4 py-3 text-xs font-mono text-[#D94E28]"
+              className="mt-4 flex items-center gap-2.5 rounded-xl border border-[#F04424] bg-[#F04424]/10 px-4 py-3 text-xs font-mono text-[#F04424]"
             >
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
@@ -298,19 +304,19 @@ export default function TrackTicketPage() {
           <div data-testid="tracked-ticket-view" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Column: Ticket Metadata & Original Specification Snapshot */}
             <div className="lg:col-span-5 space-y-6">
-              <div className="rounded-xl border border-[#D5D0C5] dark:border-[#1E2231] bg-[#FDFCF9] dark:bg-[#0B0E17] p-6 space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D5D0C5] dark:border-[#1E2231] pb-4">
+              <div className="rounded-[24px] border border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#141414] p-6 space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5E2DC] dark:border-[#262626] pb-4">
                   <div>
-                    <span className="block text-[10px] font-mono uppercase tracking-wider text-[#6E6A61] dark:text-[#8E93A6]">
+                    <span className="block text-[10px] font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1]">
                       Authorized Ticket
                     </span>
-                    <h2 className="text-xl font-mono font-bold text-[#111110] dark:text-white">
+                    <h2 className="text-xl font-mono font-bold text-[#171717] dark:text-white">
                       {ticket.ticketNumber}
                     </h2>
                   </div>
                   <span
                     data-testid="tracked-ticket-status"
-                    className={`rounded-md border px-2.5 py-1 text-xs font-mono font-semibold ${getStatusBadgeStyle(
+                    className={`rounded-full border px-3 py-1 text-xs font-mono font-semibold ${getStatusBadgeStyle(
                       ticket.status
                     )}`}
                   >
@@ -320,45 +326,45 @@ export default function TrackTicketPage() {
 
                 <div className="space-y-3 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[#6E6A61] dark:text-[#8E93A6]">Client</span>
-                    <span className="font-semibold text-[#111110] dark:text-white">
+                    <span className="font-mono text-[#666666] dark:text-[#A1A1A1]">Client</span>
+                    <span className="font-semibold text-[#171717] dark:text-white">
                       {ticket.clientName}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[#6E6A61] dark:text-[#8E93A6]">Organization</span>
-                    <span className="font-medium text-[#111110] dark:text-[#D5DBE8]">
+                    <span className="font-mono text-[#666666] dark:text-[#A1A1A1]">Organization</span>
+                    <span className="font-medium text-[#171717] dark:text-[#E5E5E5]">
                       {ticket.company}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[#6E6A61] dark:text-[#8E93A6]">Submitted</span>
-                    <span className="font-mono text-[#111110] dark:text-[#D5DBE8]">
+                    <span className="font-mono text-[#666666] dark:text-[#A1A1A1]">Submitted</span>
+                    <span className="font-mono text-[#171717] dark:text-[#E5E5E5]">
                       {new Date(ticket.createdAt).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[#6E6A61] dark:text-[#8E93A6]">Last Updated</span>
+                    <span className="font-mono text-[#666666] dark:text-[#A1A1A1]">Last Updated</span>
                     <span className="font-mono text-emerald-700 dark:text-emerald-400">
                       {new Date(ticket.updatedAt).toLocaleString()}
                     </span>
                   </div>
                 </div>
 
-                <div className="border-t border-[#D5D0C5] dark:border-[#1E2231] pt-4 space-y-3">
-                  <p className="text-xs font-mono uppercase tracking-wider text-[#2544E8] dark:text-[#6E88FF] font-semibold">
+                <div className="border-t border-[#E5E2DC] dark:border-[#262626] pt-4 space-y-3">
+                  <p className="text-xs font-mono uppercase tracking-wider text-[#FF4B1F] font-semibold">
                     Submitted Project Specification Snapshot
                   </p>
                   <div className="space-y-2.5">
                     {ticket.submittedFields.map((field) => (
                       <div
                         key={field.key}
-                        className="rounded-lg border border-[#E2DDD2] dark:border-[#181D2C] bg-[#F5F3EE] dark:bg-[#0F1320] p-3 text-xs"
+                        className="rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#090909] p-3 text-xs"
                       >
-                        <span className="block font-mono text-[10px] uppercase tracking-wider text-[#6E6A61] dark:text-[#8E93A6]">
+                        <span className="block font-mono text-[10px] uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1]">
                           {field.label}
                         </span>
-                        <span className="mt-1 block font-medium text-[#111110] dark:text-[#F4F1EA] break-words">
+                        <span className="mt-1 block font-medium text-[#171717] dark:text-[#F8F8F8] break-words">
                           {field.value}
                         </span>
                       </div>
@@ -370,10 +376,10 @@ export default function TrackTicketPage() {
 
             {/* Right Column: Chronological Two-Way Conversation Thread */}
             <div className="lg:col-span-7 space-y-6">
-              <div className="rounded-xl border border-[#D5D0C5] dark:border-[#1E2231] bg-[#FDFCF9] dark:bg-[#0B0E17] p-6 space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D5D0C5] dark:border-[#1E2231] pb-4">
+              <div className="rounded-[24px] border border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#141414] p-6 space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5E2DC] dark:border-[#262626] pb-4">
                   <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-[#2544E8] dark:text-[#6E88FF]" />
+                    <MessageSquare className="h-4 w-4 text-[#FF4B1F]" />
                     <h3 className="text-base font-bold font-display">
                       Conversation History ({ticket.messages.length})
                     </h3>
@@ -389,7 +395,7 @@ export default function TrackTicketPage() {
                           false
                         )
                       }
-                      className="inline-flex items-center gap-1.5 rounded-md border border-[#C8C2B5] dark:border-[#242C42] px-2.5 py-1 text-[11px] font-mono text-[#4A4843] dark:text-[#9CA5BA] hover:text-[#2544E8] cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E2DC] dark:border-[#262626] px-3 py-1 text-[11px] font-mono text-[#666666] dark:text-[#A1A1A1] hover:text-[#FF4B1F] cursor-pointer"
                     >
                       <RefreshCw className="h-3 w-3" />
                       <span>Sync Live</span>
@@ -407,36 +413,36 @@ export default function TrackTicketPage() {
                     return (
                       <div
                         key={msg.id}
-                        className={`rounded-xl border p-4 ${
+                        className={`rounded-2xl border p-4 ${
                           isAdmin
-                            ? 'border-[#2544E8]/35 bg-[#2544E8]/[0.06] dark:bg-[#2544E8]/[0.12]'
-                            : 'border-[#D5D0C5] dark:border-[#1E2231] bg-[#F5F3EE] dark:bg-[#101422]'
+                            ? 'border-[#FF4B1F]/35 bg-[#FF4B1F]/[0.05] dark:bg-[#FF4B1F]/[0.1]'
+                            : 'border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#090909]'
                         }`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#111110] dark:text-white">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#171717] dark:text-white">
                             {isAdmin ? (
-                              <ShieldCheck className="h-3.5 w-3.5 text-[#2544E8] dark:text-[#6E88FF]" />
+                              <ShieldCheck className="h-3.5 w-3.5 text-[#FF4B1F]" />
                             ) : (
-                              <User className="h-3.5 w-3.5 text-[#D94E28]" />
+                              <User className="h-3.5 w-3.5 text-[#666666] dark:text-[#A1A1A1]" />
                             )}
                             <span>{msg.senderName}</span>
                             <span
-                              className={`rounded px-1.5 py-0.5 text-[10px] font-mono ${
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-mono ${
                                 isAdmin
-                                  ? 'bg-[#2544E8] text-white'
-                                  : 'bg-black/10 dark:bg-white/10 text-[#4A4843] dark:text-[#B8C0D4]'
+                                  ? 'bg-[#FF4B1F] text-white'
+                                  : 'bg-black/10 dark:bg-white/10 text-[#666666] dark:text-[#A1A1A1]'
                               }`}
                             >
                               {msg.senderRole}
                             </span>
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#6E6A61] dark:text-[#8E93A6]">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#666666] dark:text-[#A1A1A1]">
                             <Clock className="h-3 w-3" />
                             <span>{new Date(msg.createdAt).toLocaleString()}</span>
                           </span>
                         </div>
-                        <p className="text-sm text-[#111110] dark:text-[#E5E9F2] whitespace-pre-wrap leading-relaxed">
+                        <p className="text-sm text-[#171717] dark:text-[#E5E5E5] whitespace-pre-wrap leading-relaxed">
                           {msg.body}
                         </p>
                       </div>
@@ -447,14 +453,14 @@ export default function TrackTicketPage() {
                 {/* Follow-Up Reply Form */}
                 <form
                   onSubmit={handleSendFollowUp}
-                  className="border-t border-[#D5D0C5] dark:border-[#1E2231] pt-5 space-y-4"
+                  className="border-t border-[#E5E2DC] dark:border-[#262626] pt-5 space-y-4"
                 >
                   <div>
                     <label
                       htmlFor="client-followup-input"
-                      className="block text-xs font-mono uppercase tracking-wider text-[#4A4843] dark:text-[#B8B3A8] mb-2"
+                      className="block text-xs font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1] mb-2"
                     >
-                      Send Follow-Up Message to CROSX DEV STUDIO
+                      Send Follow-Up Message to CROSX DEV STUDIO®
                     </label>
                     <textarea
                       id="client-followup-input"
@@ -463,25 +469,25 @@ export default function TrackTicketPage() {
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
                       placeholder="Add architectural details, clarify requirements, or reply to IRON CLAD..."
-                      className="w-full rounded-lg border border-[#C8C2B5] dark:border-[#282B3A] bg-[#F5F3EE] dark:bg-[#10131E] px-3.5 py-2.5 text-sm text-[#111110] dark:text-[#F4F1EA] placeholder:text-[#8E93A6] focus:border-[#2544E8] focus:outline-none"
+                      className="w-full rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#090909] px-4 py-3 text-sm text-[#171717] dark:text-[#F8F8F8] placeholder:text-[#A1A1A1] focus:border-[#FF4B1F] focus:outline-none"
                     />
                   </div>
 
                   {replySuccess && (
-                    <div className="flex items-center gap-2 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-3.5 py-2.5 text-xs font-mono text-emerald-700 dark:text-emerald-300">
+                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 text-xs font-mono text-emerald-700 dark:text-emerald-300">
                       <CheckCircle2 className="h-4 w-4 shrink-0" />
                       <span>{replySuccess}</span>
                     </div>
                   )}
 
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-[11px] font-mono text-[#6E6A61] dark:text-[#8E93A6]">
+                    <span className="text-[11px] font-mono text-[#666666] dark:text-[#A1A1A1]">
                       End-to-end verified session · Auto-syncing every 6s
                     </span>
                     <button
                       type="submit"
                       disabled={sendingReply || !replyText.trim()}
-                      className="cta-tactile-primary inline-flex items-center gap-2 rounded-full bg-[#111110] text-white dark:bg-[#2544E8] px-5 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold hover:bg-[#2544E8] dark:hover:bg-[#3B5BFF] disabled:opacity-50 cursor-pointer"
+                      className="cta-tactile-primary inline-flex items-center gap-2 rounded-full bg-[#FF4B1F] hover:bg-[#F04424] text-white px-6 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold disabled:opacity-50 cursor-pointer"
                     >
                       <span>{sendingReply ? 'Sending...' : 'Send Reply'}</span>
                       <Send className="h-3.5 w-3.5" />
@@ -492,12 +498,12 @@ export default function TrackTicketPage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-[#C8C2B5] dark:border-[#242C42] bg-[#FDFCF9]/60 dark:bg-[#0B0E17]/60 p-10 text-center space-y-3">
-            <Ticket className="h-8 w-8 text-[#2544E8] dark:text-[#6E88FF] mx-auto" />
+          <div className="rounded-[24px] border border-dashed border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF]/70 dark:bg-[#141414]/70 p-12 text-center space-y-3">
+            <Ticket className="h-8 w-8 text-[#FF4B1F] mx-auto" />
             <h2 className="text-lg font-bold font-display">
               Enter Your Ticket ID &amp; Tracking Token Above
             </h2>
-            <p className="text-xs text-[#6E6A61] dark:text-[#8E93A6] max-w-md mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#666666] dark:text-[#A1A1A1] max-w-md mx-auto leading-relaxed">
               For your security, ticket IDs alone never grant access to conversation history. Provide both credentials received when you submitted your Project Specification Brief.
             </p>
           </div>

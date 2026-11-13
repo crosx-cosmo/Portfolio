@@ -353,4 +353,87 @@ VALUES
   )
 ON CONFLICT (field_key) DO NOTHING;
 
+-- -----------------------------------------------------------------------------
+-- 9. NEON AUTH (MANAGED BETTER AUTH) SCHEMA & ADMIN ALLOWLIST (BACKWARD-COMPATIBLE)
+-- -----------------------------------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS neon_auth;
+
+CREATE TABLE IF NOT EXISTS neon_auth."user" (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  "emailVerified" BOOLEAN NOT NULL DEFAULT FALSE,
+  image TEXT,
+  role TEXT NOT NULL DEFAULT 'admin',
+  banned BOOLEAN DEFAULT FALSE,
+  "banReason" TEXT,
+  "banExpires" TIMESTAMPTZ,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS neon_auth."session" (
+  id TEXT PRIMARY KEY,
+  "expiresAt" TIMESTAMPTZ NOT NULL,
+  token TEXT UNIQUE NOT NULL,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "ipAddress" TEXT,
+  "userAgent" TEXT,
+  "userId" TEXT NOT NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
+  "impersonatedBy" TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_neon_auth_session_token
+  ON neon_auth."session" (token);
+CREATE INDEX IF NOT EXISTS idx_neon_auth_session_user_id
+  ON neon_auth."session" ("userId");
+
+CREATE TABLE IF NOT EXISTS neon_auth."account" (
+  id TEXT PRIMARY KEY,
+  "accountId" TEXT NOT NULL,
+  "providerId" TEXT NOT NULL DEFAULT 'credential',
+  "userId" TEXT NOT NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
+  "accessToken" TEXT,
+  "refreshToken" TEXT,
+  "idToken" TEXT,
+  "accessTokenExpiresAt" TIMESTAMPTZ,
+  "refreshTokenExpiresAt" TIMESTAMPTZ,
+  scope TEXT,
+  password TEXT,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE ("providerId", "accountId")
+);
+
+CREATE INDEX IF NOT EXISTS idx_neon_auth_account_user_id
+  ON neon_auth."account" ("userId");
+
+CREATE TABLE IF NOT EXISTS neon_auth."verification" (
+  id TEXT PRIMARY KEY,
+  identifier TEXT NOT NULL,
+  value TEXT NOT NULL,
+  "expiresAt" TIMESTAMPTZ NOT NULL,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_neon_auth_verification_identifier
+  ON neon_auth."verification" (LOWER(identifier));
+
+CREATE TABLE IF NOT EXISTS studio_admin_allowlist (
+  email TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT 'IRON CLAD',
+  role TEXT NOT NULL DEFAULT 'admin' CHECK (role IN ('admin')),
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO studio_admin_allowlist (email, name, role, active)
+VALUES
+  ('taskwalaconnect@gmail.com', 'IRON CLAD · Studio Owner', 'admin', TRUE),
+  ('admin@crosx.in', 'IRON CLAD · Principal Architect', 'admin', TRUE),
+  ('ironclad@crosx.in', 'IRON CLAD · Senior Project Developer', 'admin', TRUE)
+ON CONFLICT (email) DO NOTHING;
+
 COMMIT;

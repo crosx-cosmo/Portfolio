@@ -2,39 +2,267 @@
 
 import React, { useEffect, useRef } from 'react';
 
-interface SmokeWisp {
-  t: number; // 0 (bottom ignition base) -> 1 (upper canopy)
-  speed: number;
-  lateralOffset: number;
-  phase: number;
-  scale: number;
-}
-
-interface PlumeDot {
-  t: number; // 0 -> 1 along diagonal fire-smoke spine
-  speed: number;
-  spreadNorm: number; // -1 to 1 perpendicular to spine
-  turbulenceAmp: number;
-  phase: number;
-  size: number;
-  bucket: number; // 0..5 color/alpha batch bucket
-}
-
-interface AmbientStarDot {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  bucket: number;
-}
-
 interface ParticleCloudCanvasProps {
-  isDark?: boolean;
+  isDark: boolean;
+  variant?: 'hero' | 'cinematic';
+  testId?: string;
 }
+
+interface SmokeBlob {
+  /** Normalized progress along the diagonal plume spine (0 = bottom-left, 1 = top-right) */
+  t: number;
+  /** Perpendicular offset from spine in normalized units */
+  perpOffset: number;
+  /** Radius multiplier relative to min(width, height) */
+  radiusRatio: number;
+  /** Sprite variant index (0..2) */
+  spriteIdx: number;
+  /** Drift speed along spine */
+  driftSpeed: number;
+  /** Phase for gentle breathing / undulation */
+  phase: number;
+  /** Base alpha multiplier */
+  alpha: number;
+}
+
+interface PlumeParticle {
+  /** Progress along diagonal spine (0..1) */
+  t: number;
+  /** Signed perpendicular distance from spine */
+  perp: number;
+  /** Tangential velocity along spine */
+  speedT: number;
+  /** Turbulence phase */
+  phase: number;
+  /** Turbulence frequency */
+  freq: number;
+  /** Turbulence amplitude */
+  amp: number;
+  /** Radius in CSS pixels */
+  size: number;
+  /** Color bucket index (0..3) for batched fill() */
+  bucket: number;
+  /** True if ambient background particle, false if concentrated in plume */
+  isAmbient: boolean;
+}
+
+const DESKTOP_PARTICLE_COUNT = 1400;
+const MOBILE_PARTICLE_COUNT = 680;
+const SMOKE_BLOB_COUNT = 26;
+const SPRITE_SIZE = 256;
+
+/**
+ * Computes a point (x, y) and unit normal (nx, ny) along a gentle S-curved
+ * rising diagonal spine from bottom-center-left to top-center-right,
+ * positioned in the atmospheric channel between the editorial copy and showcase.
+ */
+function getSpinePoint(
+  t: number,
+  w: number,
+  h: number,
+  timeSec: number
+): { x: number; y: number; nx: number; ny: number } {
+  const startX = w * 0.38;
+  const startY = h * 0.95;
+  const endX = w * 0.78;
+  const endY = h * 0.05;
+
+  const baseX = startX + (endX - startX) * t;
+  const baseY = startY + (endY - startY) * t;
+
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+
+  const wave =
+    Math.sin(t * Math.PI * 2.1 - timeSec * 0.55) * (Math.min(w, h) * 0.048) +
+    Math.cos(t * Math.PI * 1.1 + timeSec * 0.32) * (Math.min(w, h) * 0.025);
+
+  return {
+    x: baseX + nx * wave,
+    y: baseY + ny * wave,
+    nx,
+    ny,
+  };
+}
+
+/**
+ * Computes an art-directed readability factor (0.24..1.0) so particles
+ * remain luminous and expressive around the hero device showcase and central negative space
+ * while softly parting behind primary hero typography and interactive controls.
+ */
+function computeReadabilityFactor(x: number, y: number, w: number, h: number): number {
+  const rx = x / (w || 1);
+  const ry = y / (h || 1);
+
+  if (w >= 960) {
+    // Left editorial headline & CTA zone protection — keep text crystal clear
+    if (rx > 0.02 && rx < 0.44 && ry > 0.12 && ry < 0.74) {
+      const cx = (rx - 0.23) / 0.21;
+      const cy = (ry - 0.43) / 0.31;
+      const distSq = cx * cx + cy * cy;
+      if (distSq < 1) {
+        return 0.24 + 0.76 * distSq;
+      }
+    }
+    // Center of right device screen — keep screenshot sharp while haloing its perimeter
+    if (rx > 0.58 && rx < 0.90 && ry > 0.22 && ry < 0.64) {
+      const cx = (rx - 0.74) / 0.16;
+      const cy = (ry - 0.43) / 0.21;
+      const distSq = cx * cx + cy * cy;
+      if (distSq < 1) {
+        return 0.48 + 0.52 * distSq;
+      }
+    }
+  } else {
+    // Mobile / tablet readability zone around primary headline
+    if (rx > 0.05 && rx < 0.95 && ry > 0.08 && ry < 0.38) {
+      const cx = (rx - 0.5) / 0.45;
+      const cy = (ry - 0.23) / 0.15;
+      const distSq = cx * cx + cy * cy;
+      if (distSq < 1) {
+        return 0.28 + 0.72 * distSq;
+      }
+    }
+  }
+  return 1;
+}
+
+/**
+ * Pre-renders a soft radial smoke + stippled micro-dot texture onto an offscreen canvas
+ * so the main animation loop only performs fast GPU-accelerated drawImage() calls.
+ * Strictly preserves the signature CROSX DEV STUDIO white + purple/violet particle identity.
+ */
+function createStippledSmokeSprite(
+  isDark: boolean,
+  variant: number
+): HTMLCanvasElement {
+  const off = document.createElement('canvas');
+  off.width = SPRITE_SIZE;
+  off.height = SPRITE_SIZE;
+  const ctx = off.getContext('2d');
+  if (!ctx) return off;
+
+  const half = SPRITE_SIZE / 2;
+
+  // 1. Soft atmospheric base glow (white + rich violet/purple/indigo)
+  const grad = ctx.createRadialGradient(half, half, 2, half, half, half);
+  if (isDark) {
+    if (variant === 0) {
+      grad.addColorStop(0, 'rgba(147, 51, 234, 0.24)');
+      grad.addColorStop(0.42, 'rgba(109, 40, 217, 0.11)');
+      grad.addColorStop(0.75, 'rgba(79, 70, 229, 0.04)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    } else if (variant === 1) {
+      grad.addColorStop(0, 'rgba(192, 132, 252, 0.20)');
+      grad.addColorStop(0.45, 'rgba(126, 34, 206, 0.09)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    } else {
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
+      grad.addColorStop(0.38, 'rgba(168, 85, 247, 0.08)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    }
+  } else {
+    if (variant === 0) {
+      grad.addColorStop(0, 'rgba(124, 58, 237, 0.16)');
+      grad.addColorStop(0.45, 'rgba(139, 92, 246, 0.08)');
+      grad.addColorStop(0.8, 'rgba(196, 181, 253, 0.03)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    } else if (variant === 1) {
+      grad.addColorStop(0, 'rgba(99, 102, 241, 0.14)');
+      grad.addColorStop(0.48, 'rgba(147, 51, 234, 0.07)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    } else {
+      grad.addColorStop(0, 'rgba(109, 40, 217, 0.15)');
+      grad.addColorStop(0.4, 'rgba(79, 70, 229, 0.07)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    }
+  }
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(half, half, half, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Bake fine stippled micro-grains into the sprite for powdery smoke texture
+  let seed = (variant + 1) * 9301 + (isDark ? 49297 : 12345);
+  const nextRand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+
+  const grainCount = 290;
+  for (let i = 0; i < grainCount; i++) {
+    const angle = nextRand() * Math.PI * 2;
+    const r = Math.pow(nextRand(), 0.78) * (half * 0.88);
+    const gx = half + Math.cos(angle) * r;
+    const gy = half + Math.sin(angle) * r;
+    const falloff = 1 - r / half;
+    const dotRadius = 0.55 + nextRand() * 1.15;
+
+    if (isDark) {
+      ctx.fillStyle =
+        i % 3 === 0
+          ? `rgba(255, 255, 255, ${(falloff * 0.52).toFixed(3)})`
+          : i % 3 === 1
+          ? `rgba(216, 180, 254, ${(falloff * 0.46).toFixed(3)})`
+          : `rgba(168, 85, 247, ${(falloff * 0.42).toFixed(3)})`;
+    } else {
+      ctx.fillStyle =
+        i % 3 === 0
+          ? `rgba(109, 40, 217, ${(falloff * 0.5).toFixed(3)})`
+          : i % 3 === 1
+          ? `rgba(79, 70, 229, ${(falloff * 0.44).toFixed(3)})`
+          : `rgba(255, 255, 255, ${(falloff * 0.65).toFixed(3)})`;
+    }
+
+    ctx.fillRect(gx - dotRadius * 0.5, gy - dotRadius * 0.5, dotRadius, dotRadius);
+  }
+
+  return off;
+}
+
+const SPRITE_CACHE: {
+  dark?: HTMLCanvasElement[];
+  light?: HTMLCanvasElement[];
+} = {};
+
+function getCachedSmokeSprites(isDark: boolean): HTMLCanvasElement[] {
+  const key = isDark ? 'dark' : 'light';
+  const existing = SPRITE_CACHE[key];
+  if (existing && existing.length === 3) {
+    return existing;
+  }
+  const built = [
+    createStippledSmokeSprite(isDark, 0),
+    createStippledSmokeSprite(isDark, 1),
+    createStippledSmokeSprite(isDark, 2),
+  ];
+  SPRITE_CACHE[key] = built;
+  return built;
+}
+
+// Preserved white + purple/violet/indigo particle buckets
+const DARK_BUCKETS = [
+  'rgba(255, 255, 255, 0.90)', // Crisp white starlight core
+  'rgba(221, 214, 254, 0.82)', // Soft lavender-white mist
+  'rgba(168, 85, 247, 0.78)',  // Vibrant purple nebula
+  'rgba(129, 140, 248, 0.70)', // Deep indigo-violet outer plume
+];
+
+const LIGHT_BUCKETS = [
+  'rgba(88, 28, 135, 0.82)',   // Deep royal purple core
+  'rgba(124, 58, 237, 0.76)',  // Vibrant violet plume
+  'rgba(79, 70, 229, 0.68)',   // Crisp indigo-purple mist
+  'rgba(255, 255, 255, 0.92)', // Luminous white starlight highlights
+];
 
 export const ParticleCloudCanvas = React.memo(function ParticleCloudCanvas({
-  isDark = true,
+  isDark,
+  variant = 'hero',
+  testId = 'hero-particle-canvas',
 }: ParticleCloudCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDarkRef = useRef(isDark);
@@ -49,433 +277,304 @@ export const ParticleCloudCanvas = React.memo(function ParticleCloudCanvas({
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
+    let animationFrameId = 0;
     let isVisible = true;
-    let lastTime = performance.now();
-    let elapsed = 0;
+    let isDocumentHidden = typeof document !== 'undefined' ? document.hidden : false;
+    let width = 1280;
+    let height = 760;
 
-    let width = (canvas.width = canvas.clientWidth || 1280);
-    let height = (canvas.height = canvas.clientHeight || 640);
+    let mouseX = -9999;
+    let mouseY = -9999;
+    let smoothMouseX = -9999;
+    let smoothMouseY = -9999;
 
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 4 : 4;
-    const lowPower = cores <= 4;
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const seeded = (seed: number) => {
-      const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
-      return x - Math.floor(x);
+    const darkSprites = getCachedSmokeSprites(true);
+    const lightSprites = getCachedSmokeSprites(false);
+
+    let seed = variant === 'cinematic' ? 84213 : 42197;
+    const rand = () => {
+      seed = (seed * 16807) % 2147483647;
+      return (seed - 1) / 2147483646;
     };
 
-    // Pre-render turbulent stippled fire-smoke cluster sprites onto offscreen canvases
-    // Renders the bright white-cyan lower fire-smoke bursts and electric blue/violet rising clouds at 60 FPS
-    const buildSmokeSprites = (dark: boolean): HTMLCanvasElement[] => {
-      const configs = dark
-        ? [
-            // 0: White-hot & cyan-blue lower fire-smoke burst (matches bottom of plume in screenshot)
-            {
-              innerGlow: 'rgba(255, 255, 255, 0.42)',
-              coreGlow: 'rgba(147, 197, 253, 0.30)',
-              midGlow: 'rgba(59, 130, 246, 0.16)',
-              dotPrimary: 'rgba(255, 255, 255, 0.96)',
-              dotSecondary: 'rgba(186, 230, 253, 0.90)',
-              dotCount: 72,
-            },
-            // 1: Electric blue mid-plume smoke cluster
-            {
-              innerGlow: 'rgba(96, 165, 250, 0.28)',
-              coreGlow: 'rgba(59, 130, 246, 0.22)',
-              midGlow: 'rgba(79, 70, 229, 0.12)',
-              dotPrimary: 'rgba(147, 197, 253, 0.92)',
-              dotSecondary: 'rgba(59, 130, 246, 0.82)',
-              dotCount: 64,
-            },
-            // 2: Deep purple-indigo upper smoke nebula
-            {
-              innerGlow: 'rgba(139, 92, 246, 0.20)',
-              coreGlow: 'rgba(99, 102, 241, 0.15)',
-              midGlow: 'rgba(67, 56, 202, 0.07)',
-              dotPrimary: 'rgba(167, 139, 250, 0.80)',
-              dotSecondary: 'rgba(99, 102, 241, 0.68)',
-              dotCount: 54,
-            },
-          ]
-        : [
-            {
-              innerGlow: 'rgba(37, 68, 232, 0.24)',
-              coreGlow: 'rgba(59, 130, 246, 0.16)',
-              midGlow: 'rgba(79, 70, 229, 0.08)',
-              dotPrimary: 'rgba(29, 78, 216, 0.88)',
-              dotSecondary: 'rgba(59, 130, 246, 0.78)',
-              dotCount: 64,
-            },
-            {
-              innerGlow: 'rgba(59, 91, 245, 0.18)',
-              coreGlow: 'rgba(79, 70, 229, 0.12)',
-              midGlow: 'rgba(99, 102, 241, 0.06)',
-              dotPrimary: 'rgba(37, 99, 235, 0.82)',
-              dotSecondary: 'rgba(79, 70, 229, 0.70)',
-              dotCount: 56,
-            },
-            {
-              innerGlow: 'rgba(109, 40, 217, 0.14)',
-              coreGlow: 'rgba(99, 102, 241, 0.09)',
-              midGlow: 'rgba(79, 70, 229, 0.04)',
-              dotPrimary: 'rgba(109, 40, 217, 0.72)',
-              dotSecondary: 'rgba(99, 102, 241, 0.58)',
-              dotCount: 48,
-            },
-          ];
-
-      return configs.map((cfg, idx) => {
-        const size = 120;
-        const off = document.createElement('canvas');
-        off.width = size;
-        off.height = size;
-        const octx = off.getContext('2d');
-        if (!octx) return off;
-
-        const half = size / 2;
-        // Asymmetric multi-lobe smoke puff so it looks like organic turbulent fire-smoke, not a flat circle
-        for (let lobe = 0; lobe < 3; lobe++) {
-          const lx = half + (seeded(idx * 30 + lobe * 7) - 0.5) * 22;
-          const ly = half + (seeded(idx * 30 + lobe * 13) - 0.5) * 22;
-          const lRadius = half * (0.58 + lobe * 0.12);
-          const grad = octx.createRadialGradient(lx, ly, 1, lx, ly, lRadius);
-          grad.addColorStop(0, lobe === 0 ? cfg.innerGlow : cfg.coreGlow);
-          grad.addColorStop(0.45, cfg.midGlow);
-          grad.addColorStop(1, 'rgba(0,0,0,0)');
-          octx.fillStyle = grad;
-          octx.fillRect(0, 0, size, size);
-        }
-
-        // Dense stippled micro-dots embedded inside each smoke puff
-        for (let i = 0; i < cfg.dotCount; i++) {
-          const r1 = seeded(idx * 300 + i * 3 + 1);
-          const r2 = seeded(idx * 300 + i * 3 + 2);
-          const r3 = seeded(idx * 300 + i * 3 + 3);
-          const angle = r1 * Math.PI * 2;
-          const dist = Math.pow(r2, 0.62) * (half * 0.84);
-          const dx = half + Math.cos(angle) * dist;
-          const dy = half + Math.sin(angle) * dist;
-          const dotSize = r3 > 0.76 ? 2.2 : r3 > 0.32 ? 1.5 : 1.05;
-
-          octx.fillStyle = i % 2 === 0 ? cfg.dotPrimary : cfg.dotSecondary;
-          octx.fillRect(dx, dy, dotSize, dotSize);
-        }
-
-        return off;
-      });
-    };
-
-    const darkSprites = buildSmokeSprites(true);
-    const lightSprites = buildSmokeSprites(false);
-
-    let wisps: SmokeWisp[] = [];
-    let plumeDots: PlumeDot[] = [];
-    let ambientDots: AmbientStarDot[] = [];
-
-    const initSystem = () => {
-      const isMobile = width < 640;
-      const isTablet = width >= 640 && width < 1024;
-
-      const wispCount = isMobile ? 20 : isTablet ? 28 : lowPower ? 32 : 40;
-      const plumeDotCount = isMobile ? 420 : isTablet ? 780 : lowPower ? 1050 : 1400;
-      const ambientCount = isMobile ? 80 : isTablet ? 140 : 220;
-
-      wisps = Array.from({ length: wispCount }, (_, i) => {
-        const r1 = seeded(i + 17);
-        const r2 = seeded(i + 89);
-        const r3 = seeded(i + 233);
-        // Concentrate more wisps in the lower-to-mid fire-smoke core (t = 0.02..0.78)
-        const t = Math.pow(r1, 1.35) * 0.86;
-        return {
-          t,
-          speed: 0.052 + r2 * 0.044,
-          lateralOffset: (r3 - 0.5) * 1.9,
-          phase: r1 * Math.PI * 2,
-          scale: (0.62 + r2 * 0.82) * (isMobile ? 0.72 : 1),
-        };
-      });
-
-      plumeDots = Array.from({ length: plumeDotCount }, (_, i) => {
-        const r1 = seeded(i * 1.7 + 31);
-        const r2 = seeded(i * 2.3 + 113);
-        const r3 = seeded(i * 3.1 + 277);
-        const r4 = seeded(i * 4.7 + 503);
-
-        const t = r1;
-        // Gaussian-like spread concentrated along the diagonal spine with wide feathered edges
-        const gaussian = r2 + r3 - 1.0; // -1 to +1
-
-        let bucket = 3;
-        const absSpread = Math.abs(gaussian);
-        if (t < 0.36 && absSpread < 0.34) {
-          bucket = r4 > 0.32 ? 0 : 1; // 0: White-hot fire core, 1: Ice-cyan spark
-        } else if (t < 0.62 && absSpread < 0.48) {
-          bucket = r4 > 0.52 ? 1 : 2; // 1: Ice-cyan, 2: Bright electric blue
-        } else if (absSpread < 0.58) {
-          bucket = r4 > 0.42 ? 2 : 3; // 2: Bright electric blue, 3: Mid cobalt blue
-        } else {
-          bucket = r4 > 0.45 ? 4 : 5; // 4: Royal indigo, 5: Deep purple-violet dust
-        }
-
-        return {
-          t,
-          speed: 0.036 + r4 * 0.052,
-          spreadNorm: gaussian,
-          turbulenceAmp: 9 + r3 * 28,
-          phase: r2 * Math.PI * 2,
-          size:
-            bucket === 0
-              ? 1.95 + r4 * 0.95
-              : bucket <= 2
-              ? 1.45 + r3 * 0.85
-              : 1.15 + r2 * 0.75,
-          bucket,
-        };
-      });
-
-      ambientDots = Array.from({ length: ambientCount }, (_, i) => {
-        const r1 = seeded(i + 901);
-        const r2 = seeded(i + 1201);
-        const r3 = seeded(i + 1501);
-        return {
-          x: width * (0.28 + r1 * 0.42),
-          y: height * (0.03 + r2 * 0.92),
-          vx: (r3 - 0.45) * 9,
-          vy: -(7 + r1 * 11),
-          size: 1.0 + r2 * 1.15,
-          bucket: i % 4 === 0 ? 1 : i % 3 === 0 ? 2 : i % 2 === 0 ? 4 : 5,
-        };
-      });
-    };
-
-    initSystem();
-
-    // Diagonal rising spine within the Upper Hero Stage:
-    // Starts at bottom-center (0.44W, 0.89H — right beside Book a Free Call / View Projects)
-    // and billows diagonally upward & right toward (0.58W, 0.06H)
-    const getSpinePoint = (t: number, time: number) => {
-      const baseX = width * (0.44 + t * 0.145 + Math.sin(t * Math.PI * 1.3) * 0.022);
-      const baseY = height * (0.89 - t * 0.83);
-      const waveX = Math.sin(t * 5.4 - time * 1.9) * (9 + t * 18);
-      const waveY = Math.cos(t * 4.6 - time * 1.5) * (4 + t * 8);
+    const blobCount = variant === 'cinematic' ? 14 : SMOKE_BLOB_COUNT;
+    const blobs: SmokeBlob[] = Array.from({ length: blobCount }, (_, i) => {
+      const t = (i / blobCount + rand() * 0.06) % 1;
+      const spreadFactor = 0.03 + Math.sin(t * Math.PI) * 0.08;
       return {
-        x: baseX + waveX,
-        y: baseY + waveY,
+        t,
+        perpOffset: (rand() - 0.5) * 2 * spreadFactor,
+        radiusRatio: 0.14 + rand() * 0.17,
+        spriteIdx: i % 3,
+        driftSpeed: 0.014 + rand() * 0.018,
+        phase: rand() * Math.PI * 2,
+        alpha: 0.55 + rand() * 0.45,
       };
-    };
+    });
 
-    const DARK_BUCKETS = [
-      'rgba(255, 255, 255, 0.96)', // 0: White-hot core dots
-      'rgba(186, 230, 253, 0.92)', // 1: Ice-cyan spark dots
-      'rgba(82, 152, 255, 0.88)',  // 2: Bright electric blue dots
-      'rgba(59, 118, 246, 0.68)',  // 3: Mid cobalt blue dots
-      'rgba(116, 102, 252, 0.72)', // 4: Royal indigo dots
-      'rgba(152, 92, 255, 0.56)',  // 5: Deep purple-violet smoke dust
-    ];
+    const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
+    const totalParticles =
+      variant === 'cinematic'
+        ? isMobileViewport
+          ? 360
+          : 720
+        : isMobileViewport
+        ? MOBILE_PARTICLE_COUNT
+        : DESKTOP_PARTICLE_COUNT;
 
-    const LIGHT_BUCKETS = [
-      'rgba(29, 78, 216, 0.92)',   // 0: Deep cobalt core
-      'rgba(37, 99, 235, 0.85)',   // 1: Electric royal blue
-      'rgba(59, 91, 245, 0.78)',   // 2: Vivid blue
-      'rgba(79, 70, 229, 0.60)',   // 3: Indigo mid
-      'rgba(109, 40, 217, 0.56)',  // 4: Royal purple
-      'rgba(124, 58, 237, 0.44)',  // 5: Violet dust
-    ];
+    const particles: PlumeParticle[] = Array.from({ length: totalParticles }, (_, i) => {
+      const isAmbient = i >= totalParticles * 0.82;
+      const t = rand();
+      const u1 = Math.max(0.0001, rand());
+      const u2 = rand();
+      const gaussian = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
 
-    const bucketCoords: number[][] = [[], [], [], [], [], []];
-    const bucketSizes: number[][] = [[], [], [], [], [], []];
-
-    const renderFrame = (now: number) => {
-      if (!isVisible) return;
-      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
-      lastTime = now;
-      if (!prefersReducedMotion) {
-        elapsed += dt;
+      const distFromCore = Math.abs(gaussian);
+      let bucket = 0;
+      if (distFromCore < 0.55) {
+        bucket = rand() < 0.62 ? 0 : 1;
+      } else if (distFromCore < 1.25) {
+        bucket = rand() < 0.55 ? 1 : 2;
+      } else {
+        bucket = rand() < 0.6 ? 2 : 3;
       }
 
+      return {
+        t,
+        perp: isAmbient ? (rand() - 0.5) * 1.45 : gaussian * 0.105,
+        speedT: (0.016 + rand() * 0.032) * (isAmbient ? 0.45 : 1),
+        phase: rand() * Math.PI * 2,
+        freq: 0.6 + rand() * 1.4,
+        amp: 3 + rand() * 14,
+        size: isAmbient
+          ? 0.9 + rand() * 1.1
+          : distFromCore < 0.5
+          ? 1.0 + rand() * 1.45
+          : 0.8 + rand() * 1.15,
+        bucket,
+        isAmbient,
+      };
+    });
+
+    let loopActive = false;
+    let themeResetTimer = 0;
+
+    const updateDimensions = () => {
+      const rect = canvas.getBoundingClientRect();
+      width = Math.max(320, rect.width || window.innerWidth);
+      height = Math.max(420, rect.height || 680);
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    updateDimensions();
+
+    const startTime = performance.now();
+    let lastRenderTime = 0;
+
+    const drawScene = (now: number) => {
+      const elapsedSec = prefersReducedMotion ? 0 : (now - startTime) * 0.001;
       const dark = isDarkRef.current;
+      const minDim = Math.min(width, height);
+
+      if (mouseX < -1000) {
+        smoothMouseX = -9999;
+        smoothMouseY = -9999;
+      } else if (smoothMouseX < -1000) {
+        smoothMouseX = mouseX;
+        smoothMouseY = mouseY;
+      } else {
+        smoothMouseX += (mouseX - smoothMouseX) * 0.08;
+        smoothMouseY += (mouseY - smoothMouseY) * 0.08;
+      }
+
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Seamless radial atmospheric glow along the center plume (zero hard clip lines, zero code-editor bleed)
-      const glowRadius = Math.min(width * 0.22, height * 0.46);
-      const spineGlow = ctx.createRadialGradient(
-        width * 0.48,
-        height * 0.58,
-        6,
-        width * 0.49,
-        height * 0.52,
-        glowRadius
-      );
-      if (dark) {
-        spineGlow.addColorStop(0, 'rgba(59, 125, 255, 0.22)');
-        spineGlow.addColorStop(0.48, 'rgba(99, 78, 245, 0.10)');
-        spineGlow.addColorStop(1, 'rgba(5, 6, 11, 0)');
-      } else {
-        spineGlow.addColorStop(0, 'rgba(37, 68, 232, 0.13)');
-        spineGlow.addColorStop(0.48, 'rgba(99, 72, 245, 0.055)');
-        spineGlow.addColorStop(1, 'rgba(245, 243, 238, 0)');
-      }
-      ctx.fillStyle = spineGlow;
-      ctx.fillRect(0, 0, width, height);
-
-      // 2. Render rising stippled fire-smoke cluster sprites along the diagonal plume
+      // 1. Render volumetric stippled smoke/nebula sprites along diagonal spine
       const sprites = dark ? darkSprites : lightSprites;
-      for (let i = 0; i < wisps.length; i++) {
-        const w = wisps[i];
-        if (!prefersReducedMotion) {
-          w.t += w.speed * dt;
-          if (w.t > 0.92) {
-            w.t = 0.02;
-          }
-        }
+      for (let i = 0; i < blobs.length; i++) {
+        const b = blobs[i];
+        const t = (b.t + elapsedSec * b.driftSpeed) % 1;
+        const spine = getSpinePoint(t, width, height, elapsedSec);
 
-        const spine = getSpinePoint(w.t, elapsed);
-        const plumeRadius = width * (0.018 + Math.pow(w.t, 1.05) * 0.095);
-        const curlX =
-          Math.sin(w.t * 6.8 - elapsed * 2.2 + w.phase) * plumeRadius * w.lateralOffset;
-        const curlY = Math.cos(w.t * 5.2 - elapsed * 1.8 + w.phase) * (plumeRadius * 0.36);
+        const edgeFade = Math.sin(t * Math.PI);
+        const breathe = 0.88 + 0.12 * Math.sin(elapsedSec * 0.9 + b.phase);
+        const radius = minDim * b.radiusRatio * breathe;
 
-        const wx = spine.x + curlX;
-        const wy = spine.y + curlY;
+        const bx = spine.x + spine.nx * (b.perpOffset * minDim);
+        const by = spine.y + spine.ny * (b.perpOffset * minDim);
 
-        // Smooth attenuation near the right-hand code editor (x > 0.58W -> 0.66W)
-        const rightFade = wx > width * 0.58 ? Math.max(0, 1 - (wx - width * 0.58) / (width * 0.08)) : 1;
-        const verticalFade = Math.min(w.t / 0.09, (0.92 - w.t) / 0.22, 1);
-        const alpha = verticalFade * rightFade * (w.t < 0.36 ? 0.96 : 0.78);
-
-        if (alpha > 0.02) {
-          const spriteIdx = w.t < 0.30 ? 0 : w.t < 0.62 ? 1 : 2;
-          const sprite = sprites[spriteIdx];
-          const drawSize = 108 * w.scale * (0.72 + w.t * 0.68);
-          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-          ctx.drawImage(sprite, wx - drawSize * 0.5, wy - drawSize * 0.5, drawSize, drawSize);
-        }
+        const readability = computeReadabilityFactor(bx, by, width, height);
+        ctx.globalAlpha = edgeFade * b.alpha * readability;
+        ctx.drawImage(
+          sprites[b.spriteIdx],
+          bx - radius,
+          by - radius,
+          radius * 2,
+          radius * 2
+        );
       }
+
       ctx.globalAlpha = 1;
 
-      for (let b = 0; b < 6; b++) {
-        bucketCoords[b].length = 0;
-        bucketSizes[b].length = 0;
-      }
-
-      // 3. Update & bucket ~1,400 rising fire-smoke multi-dots
-      const maxSpreadWidth = width * 0.16;
-      const minSpreadWidth = width * 0.015;
-      const rightCutoff = width * 0.65; // Stops before the right-hand code terminal
-
-      for (let i = 0; i < plumeDots.length; i++) {
-        const p = plumeDots[i];
-        if (!prefersReducedMotion) {
-          p.t += p.speed * dt;
-          if (p.t >= 1.0) {
-            p.t -= 1.0;
-          }
-        }
-
-        const spine = getSpinePoint(p.t, elapsed);
-        const currentSpread = minSpreadWidth + Math.pow(p.t, 0.90) * maxSpreadWidth;
-
-        const turbX = Math.sin(p.t * 8.2 - elapsed * 2.5 + p.phase) * p.turbulenceAmp;
-        const turbY = Math.cos(p.t * 6.6 - elapsed * 2.0 + p.phase) * (p.turbulenceAmp * 0.55);
-
-        const px = spine.x + p.spreadNorm * currentSpread * 0.85 + turbX;
-        const py = spine.y + p.spreadNorm * currentSpread * 0.42 + turbY;
-
-        if (px > width * 0.25 && px < rightCutoff && py > 6 && py < height - 10) {
-          let activeBucket = p.bucket;
-          if (p.t < 0.28 && Math.abs(p.spreadNorm) < 0.30) {
-            activeBucket = i % 3 === 0 ? 0 : 1;
-          } else if (p.t > 0.68 && activeBucket < 3) {
-            activeBucket = i % 2 === 0 ? 3 : 4;
-          }
-
-          bucketCoords[activeBucket].push(px, py);
-          bucketSizes[activeBucket].push(p.size);
-        }
-      }
-
-      // 4. Update & bucket ambient cosmic dust dots
-      for (let i = 0; i < ambientDots.length; i++) {
-        const a = ambientDots[i];
-        if (!prefersReducedMotion) {
-          a.x += a.vx * dt;
-          a.y += a.vy * dt;
-          if (a.y < 8) a.y = height - 14;
-          if (a.x < width * 0.25) a.x = width * 0.63;
-          if (a.x > width * 0.64) a.x = width * 0.28;
-        }
-        bucketCoords[a.bucket].push(a.x, a.y);
-        bucketSizes[a.bucket].push(a.size);
-      }
-
-      // 5. Execute 6 single batched GPU path fills for all ~1,600 dots
+      // 2. Batch-render fine powdery particle dots by color bucket (4 draw calls total)
       const palette = dark ? DARK_BUCKETS : LIGHT_BUCKETS;
-      for (let b = 5; b >= 0; b--) {
-        const coords = bucketCoords[b];
-        const sizes = bucketSizes[b];
-        const count = sizes.length;
-        if (count === 0) continue;
 
+      for (let bucketIdx = 0; bucketIdx < 4; bucketIdx++) {
+        ctx.fillStyle = palette[bucketIdx];
         ctx.beginPath();
-        ctx.fillStyle = palette[b];
-        for (let j = 0; j < count; j++) {
-          const x = coords[j * 2];
-          const y = coords[j * 2 + 1];
-          const s = sizes[j];
-          ctx.rect(x, y, s, s);
+
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          if (p.bucket !== bucketIdx) continue;
+
+          const t = (p.t + elapsedSec * p.speedT) % 1;
+          const spine = getSpinePoint(t, width, height, elapsedSec);
+
+          const envelope = p.isAmbient ? 1 : 0.45 + 0.75 * Math.sin(t * Math.PI);
+          const perpPx = p.perp * minDim * envelope;
+
+          const turbX = Math.cos(elapsedSec * p.freq + p.phase) * p.amp;
+          const turbY = Math.sin(elapsedSec * p.freq * 1.15 + p.phase) * p.amp;
+
+          let px = spine.x + spine.nx * perpPx + turbX;
+          let py = spine.y + spine.ny * perpPx + turbY;
+
+          // Subtle cursor vortex/repulsion
+          if (smoothMouseX > -1000) {
+            const dx = px - smoothMouseX;
+            const dy = py - smoothMouseY;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < 25600 && distSq > 1) {
+              const dist = Math.sqrt(distSq);
+              const force = (1 - dist / 160) * 18;
+              px += (dx / dist) * force - (dy / dist) * (force * 0.35);
+              py += (dy / dist) * force + (dx / dist) * (force * 0.35);
+            }
+          }
+
+          // Respect readability attenuation by thinning non-core particles over text blocks
+          const readability = computeReadabilityFactor(px, py, width, height);
+          if (readability < 0.55 && (i & 1) === 1) {
+            continue;
+          }
+
+          const s = p.size * (0.75 + 0.25 * readability);
+          ctx.rect(px - s * 0.5, py - s * 0.5, s, s);
         }
+
         ctx.fill();
       }
+    };
 
-      if (!prefersReducedMotion && isVisible) {
-        timerId = window.setTimeout(() => renderFrame(performance.now()), 16);
+    const scheduleNextFrame = () => {
+      if (!loopActive || animationFrameId !== 0) return;
+      animationFrameId = window.requestAnimationFrame(renderFrame);
+    };
+
+    const renderFrame = (now: number) => {
+      animationFrameId = 0;
+      if (!loopActive) return;
+      if (lastRenderTime === 0 || now - lastRenderTime >= 28) {
+        lastRenderTime = now;
+        drawScene(now);
+      }
+      scheduleNextFrame();
+    };
+
+    const syncLoopState = () => {
+      const shouldRun = isVisible && !isDocumentHidden && !prefersReducedMotion;
+      if (shouldRun && !loopActive) {
+        loopActive = true;
+        scheduleNextFrame();
+      } else if (!shouldRun && loopActive) {
+        loopActive = false;
+        if (animationFrameId !== 0) {
+          window.cancelAnimationFrame(animationFrameId);
+          animationFrameId = 0;
+        }
       }
     };
 
-    let timerId = 0;
-    renderFrame(performance.now());
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isVisible) return;
+      const rect = canvas.getBoundingClientRect();
+      mouseX = e.clientX - rect.left;
+      mouseY = e.clientY - rect.top;
+    };
+
+    const handleMouseLeave = () => {
+      mouseX = -9999;
+      mouseY = -9999;
+    };
 
     const handleResize = () => {
-      const nextW = canvas.clientWidth;
-      const nextH = canvas.clientHeight;
-      if (nextW > 0 && nextH > 0 && (Math.abs(nextW - width) > 20 || Math.abs(nextH - height) > 20)) {
-        width = canvas.width = nextW;
-        height = canvas.height = nextH;
-        initSystem();
+      updateDimensions();
+      if (prefersReducedMotion) {
+        drawScene(performance.now());
       }
     };
+
+    const handleVisibilityChange = () => {
+      isDocumentHidden = document.hidden;
+      syncLoopState();
+    };
+
+    window.addEventListener('resize', handleResize, { passive: true });
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    document.addEventListener('mouseleave', handleMouseLeave, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (!entry) return;
-        isVisible = entry.isIntersecting;
-        window.clearTimeout(timerId);
-        if (isVisible && !prefersReducedMotion) {
-          lastTime = performance.now();
-          renderFrame(lastTime);
+        if (entry) {
+          isVisible = entry.isIntersecting;
+          syncLoopState();
         }
       },
-      { threshold: 0.05 }
+      { threshold: 0.02 }
     );
-
     observer.observe(canvas);
-    window.addEventListener('resize', handleResize, { passive: true });
+
+    drawScene(performance.now());
+    syncLoopState();
+
+    // Redraw static reduced-motion canvas cleanly when theme toggles
+    if (prefersReducedMotion) {
+      themeResetTimer = window.setInterval(() => {
+        drawScene(performance.now());
+      }, 800);
+    }
 
     return () => {
-      window.clearTimeout(timerId);
+      loopActive = false;
+      if (animationFrameId !== 0) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+      if (themeResetTimer !== 0) {
+        window.clearInterval(themeResetTimer);
+      }
       observer.disconnect();
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [variant]);
 
   return (
     <canvas
       ref={canvasRef}
-      data-testid="hero-particle-canvas"
+      data-testid={testId}
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 top-0 h-[560px] sm:h-[620px] lg:h-[640px] w-full"
+      className="pointer-events-none absolute inset-0 h-full w-full z-0"
     />
   );
 });

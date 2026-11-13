@@ -15,13 +15,13 @@ const subscribeTheme = (onStoreChange: () => void) => {
 const getThemeClientSnapshot = (): boolean => {
   try {
     const saved = window.localStorage.getItem('crosx-theme');
-    return saved ? saved === 'dark' : true;
+    return saved ? saved === 'dark' : false;
   } catch {
-    return true;
+    return false;
   }
 };
 
-const getThemeServerSnapshot = (): boolean => true;
+const getThemeServerSnapshot = (): boolean => false;
 
 export function useStudioTheme(): {
   isDark: boolean;

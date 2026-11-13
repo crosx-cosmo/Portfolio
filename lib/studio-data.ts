@@ -68,14 +68,6 @@ export interface ProcessStage {
   gateCheck: string;
 }
 
-export interface TerminalTab {
-  id: string;
-  filename: string;
-  language: string;
-  code: string;
-  outputLines: string[];
-}
-
 export const STUDIO_BRAND = {
   name: 'CROSX DEV STUDIO',
   founder: 'IRON CLAD',
@@ -470,87 +462,5 @@ export const PROCESS_STAGES: ProcessStage[] = [
       'We deploy your web application or mobile build with production optimization, SEO metadata verification, and clean documentation for long-term growth.',
     artifacts: ['Cloud & App Store Deployment', 'SEO & Performance Audit', 'Complete Codebase Ownership'],
     gateCheck: 'Live production verification across desktop, tablet & mobile',
-  },
-];
-
-export const TERMINAL_TABS: TerminalTab[] = [
-  {
-    id: 'architecture',
-    filename: 'crosx.architecture.ts',
-    language: 'typescript',
-    code: `// CROSX DEV STUDIO — Full-Spectrum Stack
-import { defineStudio } from '@crosx/core';
-
-export const studio = defineStudio({
-  studio: 'CROSX DEV STUDIO',
-  founder: 'IRON CLAD (Senior Project Developer)',
-  webAndApps: [
-    'JavaScript & TypeScript 5.9',
-    'React 19 · Next.js 15 · Vite',
-    'TanStack (Query · Router · Table)',
-    'Tailwind CSS v4 (Full Dark/Light)',
-  ],
-  backendAndMobile: [
-    'NestJS · Node.js · Neon DB · PostgreSQL',
-    'React Native + Expo (iOS & Android)',
-  ],
-  mission: 'Best-in-Class Projects at Affordable Prices',
-});`,
-    outputLines: [
-      '✓ Loaded CROSX DEV STUDIO manifest (Founded by IRON CLAD)',
-      '✓ Web Stack Ready: JS · TS · Vite · TanStack · React · Next.js · Tailwind',
-      '✓ Backend & Mobile Ready: NestJS · Node.js · Neon DB · PostgreSQL · Expo',
-    ],
-  },
-  {
-    id: 'mobile-expo',
-    filename: 'mobile.expo.tsx',
-    language: 'typescript',
-    code: `// Cross-Platform Mobile App (React Native + Expo)
-import { Stack } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-
-export function CrosxMobileShell() {
-  const { data } = useQuery({
-    queryKey: ['studio-sync'],
-    queryFn: () => fetch('https://crosx.in/api/sync'),
-  });
-
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-    </Stack>
-  );
-}`,
-    outputLines: [
-      '✓ Compiled React Native + Expo Router universal navigation tree',
-      '✓ Shared TanStack Query cache & TypeScript schemas with Web App',
-      '✓ Verified 60fps native gesture & dark/light theme adaptation',
-    ],
-  },
-  {
-    id: 'database',
-    filename: 'neon.postgres.ts',
-    language: 'typescript',
-    code: `// NestJS + Node.js + Neon Serverless PostgreSQL
-import { Injectable } from '@nestjs/common';
-import { neon } from '@neondatabase/serverless';
-
-@Injectable()
-export class ProjectInquiryService {
-  private readonly sql = neon(process.env.NEON_DATABASE_URL!);
-
-  async commitInquiry(dto: CreateInquiryDto) {
-    return this.sql(
-      'INSERT INTO studio_project_inquiries VALUES ($1, $2) RETURNING *',
-      [dto.clientName, dto.serviceScope],
-    );
-  }
-}`,
-    outputLines: [
-      '✓ Connected to Neon Serverless PostgreSQL (studio_project_inquiries)',
-      '✓ Initialized NestJS dependency-injected controller & service layer',
-      '✓ Ready for parameterized INSERT statements via /api/inquiries',
-    ],
   },
 ];

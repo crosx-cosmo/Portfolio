@@ -1,38 +1,35 @@
 import type { Metadata, Viewport } from 'next';
-import {
-  Space_Grotesk,
-  Instrument_Serif,
-  Plus_Jakarta_Sans,
-  JetBrains_Mono,
-} from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-space-grotesk',
+const geistSans = localFont({
+  src: './fonts/geist-latin.woff2',
+  weight: '400 900',
+  variable: '--font-geist-sans',
   display: 'swap',
 });
 
-const instrumentSerif = Instrument_Serif({
-  subsets: ['latin'],
-  weight: ['400'],
-  style: ['normal', 'italic'],
+const geistMono = localFont({
+  src: './fonts/geist-mono-latin.woff2',
+  weight: '400 700',
+  variable: '--font-geist-mono',
+  display: 'swap',
+});
+
+const instrumentSerif = localFont({
+  src: [
+    {
+      path: './fonts/instrument-serif-normal.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: './fonts/instrument-serif-italic.woff2',
+      weight: '400',
+      style: 'italic',
+    },
+  ],
   variable: '--font-instrument-serif',
-  display: 'swap',
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-plus-jakarta',
-  display: 'swap',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-jetbrains-mono',
   display: 'swap',
 });
 
@@ -42,8 +39,8 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#05060B' },
-    { media: '(prefers-color-scheme: light)', color: '#F5F3EE' },
+    { media: '(prefers-color-scheme: light)', color: '#FAF9F6' },
+    { media: '(prefers-color-scheme: dark)', color: '#090909' },
   ],
 };
 
@@ -113,20 +110,21 @@ export const metadata: Metadata = {
   },
 };
 
-const THEME_INIT_SCRIPT = `(function(){try{var s=localStorage.getItem('crosx-theme'),d=s?s==='dark':true,r=document.documentElement;r.classList.toggle('dark',d);r.dataset.theme=d?'dark':'light';}catch(e){}})();`;
+const THEME_INIT_SCRIPT = `(function(){try{var s=localStorage.getItem('crosx-theme'),d=s?s==='dark':false,r=document.documentElement;r.classList.toggle('dark',d);r.dataset.theme=d?'dark':'light';}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`dark ${spaceGrotesk.variable} ${instrumentSerif.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable}`}
+      data-theme="light"
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
       suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body
-        className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] antialiased selection:bg-[#2544E8] selection:text-white overflow-x-hidden"
+        className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] font-sans antialiased selection:bg-[#FF4B1F] selection:text-white overflow-x-hidden"
         suppressHydrationWarning
       >
         {children}

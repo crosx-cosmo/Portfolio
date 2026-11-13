@@ -26,11 +26,23 @@ import {
   Check,
   Ticket,
   ShieldCheck,
+  Clock,
+  Download,
+  CalendarClock,
+  FileCheck2,
 } from 'lucide-react';
+
+export interface EstimatorSeedPayload {
+  scope: string;
+  timeline: string;
+  brief: string;
+  version: number;
+}
 
 interface ProjectInquirySectionProps {
   selectedScopeProp?: string;
   referenceProjectProp?: string;
+  estimatorSeed?: EstimatorSeedPayload | null;
 }
 
 interface CreatedTicketConfirmation {
@@ -41,9 +53,18 @@ interface CreatedTicketConfirmation {
   submittedFields: SubmittedFieldSnapshot[];
 }
 
+const DRAFT_STORAGE_KEY = 'crosx-inquiry-draft-v1';
+
+const CALL_WINDOWS = [
+  'Morning IST / EU (10:00–14:00 IST)',
+  'Evening IST / US EST (19:00–22:30 IST)',
+  'Async Architecture Review',
+] as const;
+
 export const ProjectInquirySection = React.memo(function ProjectInquirySection({
   selectedScopeProp,
   referenceProjectProp,
+  estimatorSeed,
 }: ProjectInquirySectionProps) {
   const [formFields, setFormFields] = useState<DynamicFormField[]>(() =>
     buildDefaultFormFields()
@@ -58,18 +79,50 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
       ? `Interested in an architecture similar to ${referenceProjectProp}. Key goals and technical requirements: `
       : '',
   });
+  const [callWindow, setCallWindow] = useState<string>(CALL_WINDOWS[2]);
   const [scopeTouched, setScopeTouched] = useState(false);
   const [briefTouched, setBriefTouched] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submittedRecord, setSubmittedRecord] = useState<ProjectInquiryRecord | null>(null);
   const [submittedTicket, setSubmittedTicket] = useState<CreatedTicketConfirmation | null>(null);
   const [copiedCredential, setCopiedCredential] = useState(false);
-  const [recentInquiries, setRecentInquiries] = useState<ProjectInquiryRecord[]>([]);
   const [neonTelemetry, setNeonTelemetry] = useState<NeonConnectionTelemetry | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  // Hydrate saved draft once on mount
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        values?: Record<string, string | boolean>;
+        callWindow?: string;
+      };
+      if (parsed && parsed.values) {
+        const hasAnyInput = Boolean(
+          String(parsed.values.name ?? '').trim() ||
+            String(parsed.values.email ?? '').trim() ||
+            String(parsed.values.projectBrief ?? '').trim()
+        );
+        if (hasAnyInput) {
+          setValues((prev) => ({ ...prev, ...parsed.values }));
+          if (parsed.values.serviceScope) setScopeTouched(true);
+          if (parsed.values.projectBrief) setBriefTouched(true);
+          if (parsed.callWindow && CALL_WINDOWS.includes(parsed.callWindow as (typeof CALL_WINDOWS)[number])) {
+            setCallWindow(parsed.callWindow);
+          }
+          setDraftRestored(true);
+        }
+      }
+    } catch {
+      // Ignore corrupt localStorage drafts
+    }
+  }, []);
+
+  // Fetch CMS dynamic fields & Neon connection health (no public client PII returned)
   useEffect(() => {
     let active = true;
     fetch('/api/inquiries', { cache: 'no-store' })
@@ -78,9 +131,6 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
         if (!active || !data) return;
         if (data.neonTelemetry) {
           setNeonTelemetry(data.neonTelemetry as NeonConnectionTelemetry);
-        }
-        if (Array.isArray(data.inquiries) && data.inquiries.length > 0) {
-          setRecentInquiries(data.inquiries as ProjectInquiryRecord[]);
         }
         if (Array.isArray(data.formFields) && data.formFields.length > 0) {
           const remoteFields = data.formFields as DynamicFormField[];
@@ -103,12 +153,35 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
         }
       })
       .catch(() => {
-        // Ignore background telemetry fetch error
+        // Keep defaults on background failure
       });
     return () => {
       active = false;
     };
   }, []);
+
+  // Sync estimator seed when user clicks "Lock Scope into Brief"
+  const estimatorVersion = estimatorSeed?.version ?? 0;
+  useEffect(() => {
+    if (!estimatorSeed || estimatorVersion === 0) return;
+    setScopeTouched(true);
+    setBriefTouched(true);
+    setSubmittedRecord(null);
+    setSubmittedTicket(null);
+    setValues((prev) => ({
+      ...prev,
+      serviceScope: estimatorSeed.scope,
+      timeline: estimatorSeed.timeline,
+      projectBrief: estimatorSeed.brief,
+    }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.serviceScope;
+      delete next.timeline;
+      delete next.projectBrief;
+      return next;
+    });
+  }, [estimatorVersion, estimatorSeed]);
 
   const effectiveServiceScope =
     !scopeTouched && selectedScopeProp
@@ -119,6 +192,24 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
     !briefTouched && referenceProjectProp && !values.projectBrief
       ? `Interested in an architecture similar to ${referenceProjectProp}. Key goals and technical requirements: `
       : String(values.projectBrief ?? '');
+
+  // Persist form draft to localStorage safely
+  useEffect(() => {
+    if (submittedRecord) return;
+    try {
+      const payloadToSave = {
+        values: {
+          ...values,
+          serviceScope: effectiveServiceScope,
+          projectBrief: effectiveProjectBrief,
+        },
+        callWindow,
+      };
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payloadToSave));
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [values, callWindow, effectiveServiceScope, effectiveProjectBrief, submittedRecord]);
 
   const handleFieldChange = (key: string, value: string | boolean) => {
     if (key === 'serviceScope') setScopeTouched(true);
@@ -137,10 +228,16 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
     e.preventDefault();
     setServerError(null);
 
+    const trimmedBrief = effectiveProjectBrief.trim();
+    const enrichedBrief =
+      trimmedBrief.length >= 15 && !trimmedBrief.includes('[Discovery Window:')
+        ? `${trimmedBrief}\n\n[Discovery Window: ${callWindow}]`
+        : trimmedBrief;
+
     const payload: Record<string, unknown> = {
       ...values,
       serviceScope: effectiveServiceScope,
-      projectBrief: effectiveProjectBrief,
+      projectBrief: enrichedBrief,
     };
 
     const validation = validateDynamicSubmission(payload, formFields);
@@ -175,10 +272,12 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
       if (data.neonTelemetry) {
         setNeonTelemetry(data.neonTelemetry as NeonConnectionTelemetry);
       }
-      setRecentInquiries((prev) => {
-        const filtered = prev.filter((item) => item.id !== data.inquiry.id);
-        return [data.inquiry, ...filtered];
-      });
+      try {
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch {
+        // Ignore storage error
+      }
+      setDraftRestored(false);
       setErrors({});
     } catch {
       setServerError('Network error while submitting your project brief. Please try again.');
@@ -193,6 +292,13 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
     setCopiedCredential(false);
     setScopeTouched(false);
     setBriefTouched(false);
+    setDraftRestored(false);
+    setCallWindow(CALL_WINDOWS[2]);
+    try {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {
+      // Ignore storage error
+    }
     const resetValues: Record<string, string | boolean> = {};
     for (const f of formFields) {
       if (f.key === 'serviceScope') {
@@ -219,6 +325,36 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
     setTimeout(() => setCopiedCredential(false), 2500);
   };
 
+  const handleDownloadBriefReceipt = () => {
+    if (!submittedRecord || !submittedTicket) return;
+    const lines = [
+      'CROSX DEV STUDIO® — PROJECT BRIEF & SUPPORT TICKET RECEIPT',
+      '==============================================================',
+      `Ticket Reference ID : ${submittedTicket.ticketNumber}`,
+      `Tracking Token      : ${submittedTicket.trackingToken}`,
+      `Ticket Status       : ${submittedTicket.status}`,
+      `Submitted At        : ${submittedTicket.createdAt}`,
+      `Client Name         : ${submittedRecord.name}`,
+      `Company / Venture   : ${submittedRecord.company}`,
+      `Engineering Scope   : ${submittedRecord.serviceScope}`,
+      `Delivery Horizon    : ${submittedRecord.timeline}`,
+      '--------------------------------------------------------------',
+      'Submitted Brief:',
+      submittedRecord.projectBrief,
+      '==============================================================',
+      'Track your live ticket updates at /track-ticket',
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${submittedTicket.ticketNumber}-receipt.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const enabledFields = formFields.filter((f) => f.enabled);
 
   return (
@@ -226,137 +362,122 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
       id="contact"
       ariaLabelledBy="contact-heading"
       offsetPx={24}
-      className="relative py-20 sm:py-28 bg-[#FDFCF9] dark:bg-[#05060B] text-[#111110] dark:text-[#F4F1EA] border-t border-[#D5D0C5] dark:border-[#1E2231]"
+      className="relative py-24 sm:py-32 bg-[#FAF9F6] dark:bg-[#090909] text-[#171717] dark:text-[#F8F8F8] border-t border-[#E5E2DC] dark:border-[#262626]"
     >
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
-          {/* Left Column: Editorial Lead & Direct Channels */}
-          <div className="lg:col-span-5 space-y-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
+          {/* Left Column: Editorial Lead, Client Ticket Portal & Studio Availability SLA */}
+          <div className="lg:col-span-5 space-y-7">
             <div>
-              <p className="text-xs font-mono uppercase tracking-[0.18em] text-[#D94E28] mb-3">
-                06 — Start a Conversation
+              <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#FF4B1F] font-semibold mb-3">
+                08 — Project Specifications Ledger
               </p>
               <h2
                 id="contact-heading"
-                className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight font-display text-[#111110] dark:text-[#F4F1EA] leading-[1.06] [text-wrap:balance]"
+                className="text-3xl sm:text-5xl font-bold tracking-tight font-display text-[#171717] dark:text-[#F8F8F8] leading-[1.04] [text-wrap:balance]"
               >
-                Best-in-Class Projects at{' '}
-                <span className="font-serif-editorial italic font-normal text-[#2544E8] dark:text-[#6E88FF]">
-                  Affordable Prices.
+                Commission Your Next{' '}
+                <span className="font-serif-editorial italic font-normal text-[#FF4B1F]">
+                  Digital Flagship.
                 </span>
               </h2>
-              <p className="mt-4 text-sm sm:text-base text-[#4A4843] dark:text-[#A3A8B8] leading-relaxed">
-                Whether you need a custom Website, a full-stack SaaS Web App, or a cross-platform React Native + Expo Mobile App, share your objectives below. Every commission generates an encrypted support ticket reviewed directly by IRON CLAD at CROSX DEV STUDIO.
+              <p className="mt-4 text-sm sm:text-base text-[#666666] dark:text-[#A1A1A1] leading-relaxed">
+                Whether launching a high-velocity Website, an enterprise SaaS Web App, or a cross-platform React Native + Expo Mobile App, submit your technical brief below. Every commission generates an encrypted support ticket reviewed directly by{' '}
+                <strong className="text-[#171717] dark:text-[#F8F8F8] font-semibold">
+                  IRON CLAD
+                </strong>{' '}
+                at{' '}
+                <strong className="text-[#171717] dark:text-[#F8F8F8] font-semibold">
+                  CROSX DEV STUDIO®
+                </strong>
+                .
               </p>
             </div>
 
-            <div className="space-y-5 pt-6 border-t border-[#D5D0C5] dark:border-[#1E2231]">
-              <div>
-                <p className="text-xs font-mono uppercase tracking-wider text-[#6E6A61] dark:text-[#8E93A6]">
-                  Studio Identity
-                </p>
-                <p className="mt-1 text-sm font-semibold text-[#111110] dark:text-[#F4F1EA]">
-                  CROSX DEV STUDIO · Founded by IRON CLAD
-                </p>
+            {/* Client Ticket Tracking Dedicated Card */}
+            <div className="rounded-2xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#141414] p-6 space-y-4 shadow-xs">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-mono uppercase tracking-wider text-[#FF4B1F] font-semibold">
+                  Client Ticket Tracking Portal
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <span>2-Way Live Sync</span>
+                </span>
               </div>
-
+              <p className="text-xs sm:text-sm text-[#666666] dark:text-[#A1A1A1] leading-relaxed">
+                Already received a <span className="font-mono text-[#171717] dark:text-[#F8F8F8]">CROSX-2026-XXXXX</span> Ticket ID and security token? Inspect real-time status updates and exchange engineering messages with IRON CLAD.
+              </p>
               <div>
-                <p className="text-xs font-mono uppercase tracking-wider text-[#6E6A61] dark:text-[#8E93A6]">
-                  Web, Backend &amp; Mobile Arsenal
-                </p>
-                <p className="mt-1 text-xs font-mono text-[#2E2D2A] dark:text-[#D5D8E2] leading-relaxed">
-                  JavaScript · TypeScript · Vite · TanStack · React · Next.js · NestJS · Node.js · Tailwind CSS · Neon DB · PostgreSQL · React Native + Expo
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs font-mono uppercase tracking-wider text-[#6E6A61] dark:text-[#8E93A6]">
-                  Already Have a Ticket ID?
-                </p>
-                <div className="mt-2">
-                  <Link
-                    href="/track-ticket"
-                    className="cta-tactile-secondary inline-flex items-center gap-2 rounded-full border border-[#C8C2B5] dark:border-[#252C40] bg-[#F5F3EE] dark:bg-[#0D1220] px-4 py-2 text-xs font-mono font-semibold text-[#2544E8] dark:text-[#6E88FF] hover:border-[#2544E8] transition-colors"
-                  >
-                    <Ticket className="h-3.5 w-3.5" />
-                    <span>Track Existing Support Ticket</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
+                <Link
+                  href="/track-ticket"
+                  className="cta-tactile-secondary inline-flex items-center gap-2.5 rounded-full border border-[#171717] dark:border-[#F8F8F8] bg-[#FAF9F6] dark:bg-[#090909] px-5 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold text-[#171717] dark:text-[#F8F8F8] hover:bg-[#FF4B1F] hover:border-[#FF4B1F] hover:text-white dark:hover:bg-[#FF4B1F] dark:hover:border-[#FF4B1F] dark:hover:text-white transition-colors"
+                >
+                  <Ticket className="h-3.5 w-3.5" />
+                  <span>Track Existing Support Ticket</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </div>
             </div>
 
-            {neonTelemetry && (
-              <div
-                data-testid="neon-connection-card"
-                className="rounded-xl border border-[#C8C2B5] dark:border-[#1E263B] bg-[#F5F3EE] dark:bg-[#090D18] p-4 space-y-2.5"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-2 text-xs font-mono font-semibold text-[#111110] dark:text-[#F4F1EA]">
-                    <span
-                      className={`h-2 w-2 rounded-full shrink-0 ${
-                        neonTelemetry.configured ? 'bg-emerald-400' : 'bg-amber-400'
-                      }`}
-                    />
-                    <span>
-                      {neonTelemetry.configured
-                        ? `Neon DB Connected (${neonTelemetry.secretKeyUsed})`
-                        : 'Neon Compatible Local Ledger'}
-                    </span>
-                  </span>
-                  <span className="rounded-full bg-[#2544E8]/10 dark:bg-[#2544E8]/20 border border-[#2544E8]/30 px-2.5 py-0.5 text-[10px] font-mono text-[#2544E8] dark:text-[#8BA2FF] whitespace-nowrap shrink-0">
-                    {neonTelemetry.region} · {neonTelemetry.databaseName}
-                  </span>
-                </div>
-                <p className="text-[11px] font-mono text-[#4A4843] dark:text-[#9CA5BA] truncate">
-                  Endpoint: {neonTelemetry.maskedEndpoint}
-                </p>
-                {neonTelemetry.neonRequestId && (
-                  <p className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 truncate">
-                    ✓ Gateway Verified · Request ID: {neonTelemetry.neonRequestId}
-                  </p>
-                )}
+            {/* Privacy-Safe Replacement: Studio Availability & Enterprise SLA */}
+            <div
+              data-testid="studio-sla-card"
+              className="rounded-2xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#141414] p-5 space-y-3"
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-[#E5E2DC] dark:border-[#262626] pb-3">
+                <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-semibold text-[#171717] dark:text-white">
+                  <Clock className="h-3.5 w-3.5 text-[#FF4B1F]" />
+                  <span>Studio Availability &amp; SLA</span>
+                </span>
+                <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                  ● Onboarding Open
+                </span>
               </div>
-            )}
+              <ul className="space-y-2 text-xs text-[#666666] dark:text-[#A1A1A1]">
+                <li className="flex items-center gap-2">
+                  <FileCheck2 className="h-3.5 w-3.5 text-[#FF4B1F] shrink-0" />
+                  <span>24-hour direct architectural &amp; milestone review by IRON CLAD</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#FF4B1F] shrink-0" />
+                  <span>Mutual NDA ready &amp; 100% full-stack source IP transfer</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Database className="h-3.5 w-3.5 text-[#FF4B1F] shrink-0" />
+                  <span>
+                    {neonTelemetry?.configured
+                      ? `Encrypted Neon PostgreSQL Ledger (${neonTelemetry.region})`
+                      : 'Encrypted Support Ticket Ledger Active'}
+                  </span>
+                </li>
+              </ul>
+            </div>
 
-            {recentInquiries.length > 0 && (
-              <div
-                data-testid="recent-inquiries-log"
-                className="rounded-xl border border-[#D5D0C5] dark:border-[#1E2231] bg-[#F5F3EE] dark:bg-[#0B0E17] p-4 space-y-2"
-              >
-                <p className="text-xs font-mono text-[#2544E8] dark:text-[#6E88FF]">
-                  Persisted Studio Inquiries ({recentInquiries.length})
-                </p>
-                <ul className="space-y-1.5 text-xs text-[#2E2D2A] dark:text-[#D5D8E2]">
-                  {recentInquiries.slice(0, 5).map((item) => (
-                    <li key={item.id} className="flex items-center justify-between gap-2">
-                      <span className="truncate font-medium text-[#111110] dark:text-[#F4F1EA]">
-                        {item.name} · {item.serviceScope}
-                      </span>
-                      <span className="font-mono text-[#6E6A61] dark:text-[#8E93A6] shrink-0">
-                        {item.id}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <div className="space-y-3 pt-2 border-t border-[#E5E2DC] dark:border-[#262626]">
+              <p className="text-xs font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1]">
+                Production Stack Arsenal
+              </p>
+              <p className="text-xs font-mono text-[#171717] dark:text-[#E5E5E5] leading-relaxed">
+                JavaScript · TypeScript · Vite · TanStack · React · Next.js · NestJS · Node.js · Tailwind CSS · Neon DB · PostgreSQL · React Native + Expo
+              </p>
+            </div>
           </div>
 
-          {/* Right Column: Dynamic Form Rendered from Saved Database Schema */}
+          {/* Right Column: Dynamic Commission Form */}
           <div className="lg:col-span-7">
-            <div className="rounded-2xl border border-[#D5D0C5] dark:border-[#1E2231] bg-[#F5F3EE] dark:bg-[#0B0E17] p-5 sm:p-8 lg:p-10 shadow-sm">
+            <div className="rounded-[24px] border border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#141414] p-6 sm:p-8 lg:p-10 shadow-[0_24px_60px_-20px_rgba(23,23,23,0.08)] dark:shadow-[0_28px_70px_-20px_rgba(0,0,0,0.85)]">
               {submittedRecord ? (
                 <div data-testid="inquiry-confirmation" className="space-y-6">
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className="h-6 w-6 text-[#2544E8] dark:text-[#6E88FF] shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-6 w-6 text-[#FF4B1F] shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="text-xl font-bold font-display text-[#111110] dark:text-[#F4F1EA]">
+                      <h3 className="text-xl font-bold font-display text-[#171717] dark:text-[#F8F8F8]">
                         Project Brief &amp; Support Ticket Created
                       </h3>
-                      <p className="mt-1 text-sm text-[#4A4843] dark:text-[#A3A8B8]">
+                      <p className="mt-1 text-sm text-[#666666] dark:text-[#A1A1A1]">
                         Thank you,{' '}
-                        <span className="text-[#111110] dark:text-[#F4F1EA] font-semibold">
+                        <span className="text-[#171717] dark:text-[#F8F8F8] font-semibold">
                           {submittedRecord.name}
                         </span>
                         . Your engineering inquiry ({submittedRecord.id}) has been logged and assigned a live support ticket.
@@ -367,48 +488,48 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                   {submittedTicket && (
                     <div
                       data-testid="ticket-credential-box"
-                      className="rounded-xl border border-[#2544E8]/35 bg-[#2544E8]/[0.06] dark:bg-[#2544E8]/[0.12] p-5 space-y-4"
+                      className="rounded-2xl border border-[#FF4B1F]/35 bg-[#FF4B1F]/[0.05] dark:bg-[#FF4B1F]/[0.09] p-5 space-y-4"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-semibold text-[#2544E8] dark:text-[#8BA2FF]">
+                        <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider font-semibold text-[#FF4B1F]">
                           <ShieldCheck className="h-4 w-4" />
                           <span>Client Support Ticket Credentials</span>
                         </span>
-                        <span className="rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+                        <span className="text-[11px] font-mono font-semibold text-emerald-700 dark:text-emerald-300">
                           STATUS: {submittedTicket.status}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="rounded-lg border border-[#C8C2B5] dark:border-[#242C42] bg-[#FDFCF9] dark:bg-[#090D18] p-3">
-                          <span className="block text-[10px] font-mono uppercase tracking-wider text-[#6E6A61] dark:text-[#8E93A6]">
+                        <div className="rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#090909] p-3.5">
+                          <span className="block text-[10px] font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1]">
                             Ticket Reference ID
                           </span>
                           <span
                             data-testid="generated-ticket-id"
-                            className="mt-1 block text-base font-mono font-bold text-[#111110] dark:text-white"
+                            className="mt-1 block text-base font-mono font-bold text-[#171717] dark:text-white"
                           >
                             {submittedTicket.ticketNumber}
                           </span>
                         </div>
-                        <div className="rounded-lg border border-[#C8C2B5] dark:border-[#242C42] bg-[#FDFCF9] dark:bg-[#090D18] p-3">
-                          <span className="block text-[10px] font-mono uppercase tracking-wider text-[#6E6A61] dark:text-[#8E93A6]">
+                        <div className="rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#090909] p-3.5">
+                          <span className="block text-[10px] font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1]">
                             Security Tracking Token (Save This)
                           </span>
                           <span
                             data-testid="generated-tracking-token"
-                            className="mt-1 block text-sm font-mono font-bold text-[#D94E28] dark:text-[#FF8B6B] break-all"
+                            className="mt-1 block text-sm font-mono font-bold text-[#FF4B1F] break-all"
                           >
                             {submittedTicket.trackingToken}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
                         <button
                           type="button"
                           onClick={handleCopyTicketCredentials}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#C8C2B5] dark:border-[#28314A] bg-[#FDFCF9] dark:bg-[#101424] px-3.5 py-2 text-xs font-mono font-medium text-[#111110] dark:text-[#E5E9F2] hover:border-[#2544E8] cursor-pointer"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E2DC] dark:border-[#2A2A2A] bg-[#FFFFFF] dark:bg-[#171717] px-4 py-2 text-xs font-mono font-medium text-[#171717] dark:text-[#F8F8F8] hover:border-[#FF4B1F] cursor-pointer"
                         >
                           {copiedCredential ? (
                             <>
@@ -418,16 +539,26 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                           ) : (
                             <>
                               <Copy className="h-3.5 w-3.5" />
-                              <span>Copy Ticket ID &amp; Token</span>
+                              <span>Copy Credentials</span>
                             </>
                           )}
+                        </button>
+
+                        <button
+                          type="button"
+                          data-testid="download-brief-receipt-btn"
+                          onClick={handleDownloadBriefReceipt}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E2DC] dark:border-[#2A2A2A] bg-[#FFFFFF] dark:bg-[#171717] px-4 py-2 text-xs font-mono font-medium text-[#171717] dark:text-[#F8F8F8] hover:border-[#FF4B1F] cursor-pointer"
+                        >
+                          <Download className="h-3.5 w-3.5 text-[#FF4B1F]" />
+                          <span>Download Receipt (.txt)</span>
                         </button>
 
                         <Link
                           href={`/track-ticket?ticket=${encodeURIComponent(
                             submittedTicket.ticketNumber
                           )}&token=${encodeURIComponent(submittedTicket.trackingToken)}`}
-                          className="cta-tactile-primary inline-flex items-center gap-2 rounded-full bg-[#2544E8] text-white px-5 py-2 text-xs font-mono font-semibold hover:bg-[#3B5BFF]"
+                          className="cta-tactile-primary inline-flex items-center gap-2 rounded-full bg-[#FF4B1F] hover:bg-[#F04424] text-white px-5 py-2 text-xs font-mono font-semibold"
                         >
                           <Ticket className="h-3.5 w-3.5" />
                           <span>Open Live Ticket Portal</span>
@@ -437,44 +568,27 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl border border-[#D5D0C5] dark:border-[#1E2231] bg-[#FDFCF9] dark:bg-[#10131E] p-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#0D0D0D] p-4 text-xs">
                     {(submittedTicket?.submittedFields ?? []).map((item) => (
                       <div
                         key={item.key}
                         className={item.type === 'textarea' ? 'sm:col-span-2' : ''}
                       >
-                        <span className="text-[#6E6A61] dark:text-[#8E93A6] font-mono block">
+                        <span className="text-[#666666] dark:text-[#A1A1A1] font-mono block">
                           {item.label}
                         </span>
-                        <span className="font-medium text-[#111110] dark:text-[#F4F1EA] mt-0.5 block break-words">
+                        <span className="font-medium text-[#171717] dark:text-[#F8F8F8] mt-0.5 block break-words">
                           {item.value}
                         </span>
                       </div>
                     ))}
                   </div>
 
-                  <div className="rounded-xl border border-[#1E2231] bg-[#080B12] p-4 space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-[#6E88FF]">
-                      <span className="inline-flex items-center gap-2">
-                        <Database className="h-3.5 w-3.5" />
-                        <span>Neon Serverless PostgreSQL · Parameterized Record Commit</span>
-                      </span>
-                      {neonTelemetry?.configured && (
-                        <span className="text-[11px] text-emerald-400">
-                          ✓ {neonTelemetry.databaseName} ({neonTelemetry.region})
-                        </span>
-                      )}
-                    </div>
-                    <pre className="text-[11px] font-mono text-[#E5E9F2] overflow-x-auto whitespace-pre-wrap">
-                      <code>{submittedRecord.sqlPreview.statement}</code>
-                    </pre>
-                  </div>
-
                   <div className="flex items-center justify-between pt-2">
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="cta-tactile-primary group/btn inline-flex items-center gap-2.5 rounded-full bg-[#111110] text-[#F5F3EE] dark:bg-[#2544E8] dark:text-white pl-6 pr-4 py-3 text-xs font-mono font-semibold hover:bg-[#2544E8] dark:hover:bg-[#3B5BFF] whitespace-nowrap shrink-0 cursor-pointer"
+                      className="cta-tactile-primary group/btn inline-flex items-center gap-2.5 rounded-full bg-[#171717] text-[#FAF9F6] dark:bg-[#FF4B1F] dark:text-white pl-6 pr-4 py-3 text-xs font-mono font-semibold hover:bg-[#FF4B1F] dark:hover:bg-[#F04424] whitespace-nowrap shrink-0 cursor-pointer"
                     >
                       <span>Submit Another Project Brief</span>
                       <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/15 transition-transform duration-300 group-hover/btn:translate-x-0.5">
@@ -485,36 +599,43 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} noValidate className="space-y-6">
-                  <div className="border-b border-[#D5D0C5] dark:border-[#1E2231] pb-4 flex flex-wrap items-center justify-between gap-4">
+                  <div className="border-b border-[#E5E2DC] dark:border-[#262626] pb-5 flex flex-wrap items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-lg font-bold font-display text-[#111110] dark:text-[#F4F1EA]">
-                        Project Specification &amp; Affordable Quote Ledger
+                      <h3 className="text-xl font-bold font-display text-[#171717] dark:text-[#F8F8F8]">
+                        Project Specification &amp; Commission Ledger
                       </h3>
-                      <p className="text-xs text-[#6E6A61] dark:text-[#8E93A6] mt-1">
+                      <p className="text-xs text-[#666666] dark:text-[#A1A1A1] mt-1">
                         Complete the parameters below to scope your Website, Web App, or React Native Mobile App.
                       </p>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-mono text-emerald-700 dark:text-emerald-400">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      <span>
-                        {neonTelemetry?.configured
-                          ? `Neon DB Active · ${neonTelemetry.region}`
-                          : 'Neon PostgreSQL Ready'}
+                    <div className="flex items-center gap-3 text-[11px] font-mono">
+                      {draftRestored && (
+                        <span className="text-[#FF4B1F] font-semibold">
+                          ● Draft Auto-Saved
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        <span>
+                          {neonTelemetry?.configured
+                            ? `Neon DB Active · ${neonTelemetry.region}`
+                            : 'Neon PostgreSQL Ready'}
+                        </span>
                       </span>
-                    </span>
+                    </div>
                   </div>
 
                   {serverError && (
                     <div
                       role="alert"
-                      className="flex items-center gap-2.5 rounded-md border border-[#D94E28] bg-[#D94E28]/10 px-4 py-3 text-xs text-[#D94E28]"
+                      className="flex items-center gap-2.5 rounded-xl border border-[#F04424] bg-[#F04424]/10 px-4 py-3 text-xs text-[#F04424]"
                     >
                       <AlertCircle className="h-4 w-4 shrink-0" />
                       <span>{serverError}</span>
                     </div>
                   )}
 
-                  {/* Dynamic 6-column responsive grid rendering saved database fields */}
+                  {/* Dynamic 6-column responsive grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-6 gap-5">
                     {enabledFields.map((field) => {
                       const colSpanClass =
@@ -563,7 +684,7 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                           <div key={field.id} className={colSpanClass}>
                             <label
                               htmlFor={fieldId}
-                              className="block text-xs font-mono uppercase tracking-wider text-[#4A4843] dark:text-[#B8B3A8] mb-2"
+                              className="block text-xs font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1] mb-2"
                             >
                               {field.label} {field.required ? '*' : ''}
                             </label>
@@ -576,10 +697,10 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                               onChange={(e) => handleFieldChange(field.key, e.target.value)}
                               placeholder={field.placeholder}
                               aria-invalid={Boolean(fieldError)}
-                              className="w-full rounded-md border border-[#C8C2B5] dark:border-[#282B3A] bg-[#FDFCF9] dark:bg-[#10131E] px-3.5 py-2.5 text-sm text-[#111110] dark:text-[#F4F1EA] placeholder:text-[#8E93A6] focus:border-[#2544E8] dark:focus:border-[#6E88FF] focus:outline-none transition-colors"
+                              className="w-full rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#0D0D0D] px-4 py-3 text-sm text-[#171717] dark:text-[#F8F8F8] placeholder:text-[#A1A1A1] focus:border-[#FF4B1F] focus:outline-none transition-colors"
                             />
                             {fieldError && (
-                              <p role="alert" className="mt-1.5 text-xs font-mono text-[#D94E28]">
+                              <p role="alert" className="mt-1.5 text-xs font-mono text-[#F04424]">
                                 {fieldError}
                               </p>
                             )}
@@ -591,14 +712,14 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                         return (
                           <div key={field.id} className={colSpanClass}>
                             <fieldset>
-                              <legend className="block text-xs font-mono uppercase tracking-wider text-[#4A4843] dark:text-[#B8B3A8] mb-2">
+                              <legend className="block text-xs font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1] mb-2">
                                 {field.label} {field.required ? '*' : ''}
                               </legend>
                               <div className="flex flex-wrap gap-3">
                                 {field.options.map((opt) => (
                                   <label
                                     key={opt}
-                                    className="inline-flex items-center gap-2 rounded-md border border-[#C8C2B5] dark:border-[#282B3A] bg-[#FDFCF9] dark:bg-[#10131E] px-3 py-2 text-xs text-[#111110] dark:text-[#F4F1EA] cursor-pointer"
+                                    className="inline-flex items-center gap-2 rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#0D0D0D] px-3.5 py-2.5 text-xs text-[#171717] dark:text-[#F8F8F8] cursor-pointer"
                                   >
                                     <input
                                       type="radio"
@@ -606,14 +727,14 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                                       value={opt}
                                       checked={String(currentVal) === opt}
                                       onChange={() => handleFieldChange(field.key, opt)}
-                                      className="accent-[#2544E8]"
+                                      className="accent-[#FF4B1F]"
                                     />
                                     <span>{opt}</span>
                                   </label>
                                 ))}
                               </div>
                               {fieldError && (
-                                <p role="alert" className="mt-1.5 text-xs font-mono text-[#D94E28]">
+                                <p role="alert" className="mt-1.5 text-xs font-mono text-[#F04424]">
                                   {fieldError}
                                 </p>
                               )}
@@ -627,7 +748,7 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                           <div key={field.id} className={colSpanClass}>
                             <label
                               htmlFor={fieldId}
-                              className="flex items-center gap-2.5 rounded-md border border-[#C8C2B5] dark:border-[#282B3A] bg-[#FDFCF9] dark:bg-[#10131E] px-3.5 py-2.5 text-xs font-medium text-[#111110] dark:text-[#F4F1EA] cursor-pointer"
+                              className="flex items-center gap-2.5 rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#0D0D0D] px-4 py-3 text-xs font-medium text-[#171717] dark:text-[#F8F8F8] cursor-pointer"
                             >
                               <input
                                 id={fieldId}
@@ -635,14 +756,14 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                                 type="checkbox"
                                 checked={Boolean(currentVal)}
                                 onChange={(e) => handleFieldChange(field.key, e.target.checked)}
-                                className="h-4 w-4 accent-[#2544E8]"
+                                className="h-4 w-4 accent-[#FF4B1F]"
                               />
                               <span>
                                 {field.label} {field.required ? '*' : ''}
                               </span>
                             </label>
                             {fieldError && (
-                              <p role="alert" className="mt-1.5 text-xs font-mono text-[#D94E28]">
+                              <p role="alert" className="mt-1.5 text-xs font-mono text-[#F04424]">
                                 {fieldError}
                               </p>
                             )}
@@ -654,7 +775,7 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                         <div key={field.id} className={colSpanClass}>
                           <label
                             htmlFor={fieldId}
-                            className="block text-xs font-mono uppercase tracking-wider text-[#4A4843] dark:text-[#B8B3A8] mb-2"
+                            className="block text-xs font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1] mb-2"
                           >
                             {field.label} {field.required ? '*' : ''}
                           </label>
@@ -667,10 +788,10 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                             onChange={(e) => handleFieldChange(field.key, e.target.value)}
                             placeholder={field.placeholder}
                             aria-invalid={Boolean(fieldError)}
-                            className="w-full rounded-md border border-[#C8C2B5] dark:border-[#282B3A] bg-[#FDFCF9] dark:bg-[#10131E] px-3.5 py-2.5 text-sm text-[#111110] dark:text-[#F4F1EA] placeholder:text-[#8E93A6] focus:border-[#2544E8] dark:focus:border-[#6E88FF] focus:outline-none transition-colors"
+                            className="w-full rounded-xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#0D0D0D] px-4 py-3 text-sm text-[#171717] dark:text-[#F8F8F8] placeholder:text-[#A1A1A1] focus:border-[#FF4B1F] focus:outline-none transition-colors"
                           />
                           {fieldError && (
-                            <p role="alert" className="mt-1.5 text-xs font-mono text-[#D94E28]">
+                            <p role="alert" className="mt-1.5 text-xs font-mono text-[#F04424]">
                               {fieldError}
                             </p>
                           )}
@@ -679,17 +800,45 @@ export const ProjectInquirySection = React.memo(function ProjectInquirySection({
                     })}
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-                    <p className="text-xs font-mono text-[#6E6A61] dark:text-[#8E93A6]">
+                  {/* Discovery Call Window Selector */}
+                  <div className="space-y-2 pt-1">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1]">
+                      <CalendarClock className="h-3.5 w-3.5 text-[#FF4B1F]" />
+                      <span>Preferred Discovery Call Window (Optional)</span>
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {CALL_WINDOWS.map((win) => {
+                        const selected = callWindow === win;
+                        return (
+                          <button
+                            key={win}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => setCallWindow(win)}
+                            className={`rounded-full border px-3.5 py-1.5 text-[11px] font-mono transition-colors cursor-pointer ${
+                              selected
+                                ? 'border-[#FF4B1F] bg-[#FF4B1F] text-white font-semibold'
+                                : 'border-[#E5E2DC] dark:border-[#262626] bg-[#FAF9F6] dark:bg-[#0D0D0D] text-[#666666] dark:text-[#A1A1A1] hover:border-[#FF4B1F]'
+                            }`}
+                          >
+                            {win}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-4 pt-3">
+                    <p className="text-xs font-mono text-[#666666] dark:text-[#A1A1A1]">
                       Direct review by IRON CLAD · Persisted via Neon Serverless PostgreSQL
                     </p>
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="cta-tactile-primary group/submit inline-flex items-center justify-center gap-3 rounded-full bg-[#111110] text-[#F5F3EE] dark:bg-[#2544E8] dark:text-white pl-6.5 pr-4 py-3 text-xs font-mono uppercase tracking-wider font-semibold hover:bg-[#2544E8] hover:text-white dark:hover:bg-[#3B5BFF] disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer"
+                      className="cta-tactile-primary group/submit inline-flex items-center justify-center gap-3 rounded-full bg-[#FF4B1F] hover:bg-[#F04424] text-white pl-7 pr-4 py-3.5 text-xs font-mono uppercase tracking-wider font-semibold disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer"
                     >
                       <span>{submitting ? 'Dispatching Brief...' : 'Dispatch Project Brief'}</span>
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15 transition-transform duration-300 group-hover/submit:translate-x-0.5 group-hover/submit:-translate-y-0.5">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/20 transition-transform duration-300 group-hover/submit:translate-x-0.5 group-hover/submit:-translate-y-0.5">
                         <Send className="h-3 w-3" />
                       </span>
                     </button>

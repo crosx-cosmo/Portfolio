@@ -1,73 +1,343 @@
 'use client';
 
 import React, { useState } from 'react';
-import { TERMINAL_TABS } from '@/lib/studio-data';
-import { Terminal, Play, CheckCircle2, Copy, Check } from 'lucide-react';
+import { Check, Copy, Play, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
 
-export const FloatingCodeTerminal = React.memo(function FloatingCodeTerminal() {
-  const [activeTabId, setActiveTabId] = useState<string>(TERMINAL_TABS[0].id);
+interface CodeTab {
+  id: string;
+  filename: string;
+  badge: string;
+  lines: Array<{
+    indent: number;
+    tokens: Array<{ text: string; colorClass: string }>;
+  }>;
+  verifyOutput: string;
+}
+
+const CODE_TABS: CodeTab[] = [
+  {
+    id: 'architecture',
+    filename: 'crosx.architecture.ts',
+    badge: 'FULL-STACK',
+    lines: [
+      {
+        indent: 0,
+        tokens: [
+          { text: 'const ', colorClass: 'text-[#FF4B1F] dark:text-[#FF6B45] font-semibold' },
+          { text: 'developer', colorClass: 'text-[#171717] dark:text-[#F8F8F8] font-semibold' },
+          { text: ' = {', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'studio: ', colorClass: 'text-[#525252] dark:text-[#D4D4D4]' },
+          {
+            text: "'CROSX DEV STUDIO®'",
+            colorClass: 'text-[#0D9488] dark:text-emerald-300',
+          },
+          { text: ',', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'founder: ', colorClass: 'text-[#525252] dark:text-[#D4D4D4]' },
+          {
+            text: "'IRON CLAD (Senior Project Developer)'",
+            colorClass: 'text-[#0D9488] dark:text-emerald-300',
+          },
+          { text: ',', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'focus: ', colorClass: 'text-[#525252] dark:text-[#D4D4D4]' },
+          { text: '[', colorClass: 'text-[#7C3AED] dark:text-violet-400' },
+        ],
+      },
+      {
+        indent: 2,
+        tokens: [
+          {
+            text: "'Full-stack Websites & Web Apps',",
+            colorClass: 'text-[#0D9488] dark:text-emerald-300',
+          },
+        ],
+      },
+      {
+        indent: 2,
+        tokens: [
+          {
+            text: "'Cross-platform Mobile Apps (Expo)',",
+            colorClass: 'text-[#0D9488] dark:text-emerald-300',
+          },
+        ],
+      },
+      {
+        indent: 2,
+        tokens: [
+          {
+            text: "'Scalable APIs, SaaS & Dashboards',",
+            colorClass: 'text-[#0D9488] dark:text-emerald-300',
+          },
+        ],
+      },
+      {
+        indent: 2,
+        tokens: [
+          {
+            text: "'Best-in-Class at Affordable Prices'",
+            colorClass: 'text-[#FF4B1F] dark:text-[#FF7854] font-semibold',
+          },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [{ text: '],', colorClass: 'text-[#7C3AED] dark:text-violet-400' }],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'stack: ', colorClass: 'text-[#525252] dark:text-[#D4D4D4]' },
+          { text: '[', colorClass: 'text-[#7C3AED] dark:text-violet-400' },
+        ],
+      },
+      {
+        indent: 2,
+        tokens: [
+          {
+            text: "'Next.js / React / Vite / TanStack',",
+            colorClass: 'text-[#0D9488] dark:text-emerald-300',
+          },
+        ],
+      },
+      {
+        indent: 2,
+        tokens: [
+          {
+            text: "'JavaScript / TypeScript / Tailwind CSS',",
+            colorClass: 'text-[#0D9488] dark:text-emerald-300',
+          },
+        ],
+      },
+      {
+        indent: 2,
+        tokens: [
+          {
+            text: "'NestJS / Node.js / Neon DB / PostgreSQL',",
+            colorClass: 'text-[#0D9488] dark:text-emerald-300',
+          },
+        ],
+      },
+      {
+        indent: 2,
+        tokens: [
+          {
+            text: "'React Native + Expo (iOS & Android)'",
+            colorClass: 'text-[#0D9488] dark:text-emerald-300',
+          },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [{ text: '],', colorClass: 'text-[#7C3AED] dark:text-violet-400' }],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'principle: ', colorClass: 'text-[#525252] dark:text-[#D4D4D4]' },
+          {
+            text: "'Build reliable systems that turn complex business workflows into production-ready software.'",
+            colorClass: 'text-[#B45309] dark:text-amber-300',
+          },
+        ],
+      },
+      {
+        indent: 0,
+        tokens: [{ text: '}', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' }],
+      },
+    ],
+    verifyOutput: '✓ Loaded CROSX DEV STUDIO manifest (Founded by IRON CLAD) · 3 Flagships Live',
+  },
+  {
+    id: 'mobile',
+    filename: 'mobile.expo.tsx',
+    badge: 'EXPO SDK 52',
+    lines: [
+      {
+        indent: 0,
+        tokens: [
+          { text: 'export async function ', colorClass: 'text-[#FF4B1F] dark:text-[#FF6B45] font-semibold' },
+          { text: 'bootMobileClient', colorClass: 'text-[#171717] dark:text-[#F8F8F8] font-semibold' },
+          { text: '() {', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'const ', colorClass: 'text-[#FF4B1F] dark:text-[#FF6B45]' },
+          { text: 'runtime = ', colorClass: 'text-[#171717] dark:text-[#F8F8F8]' },
+          { text: "'React Native + Expo SDK 52'", colorClass: 'text-[#0D9488] dark:text-emerald-300' },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'const ', colorClass: 'text-[#FF4B1F] dark:text-[#FF6B45]' },
+          { text: 'targets = [', colorClass: 'text-[#171717] dark:text-[#F8F8F8]' },
+          { text: "'iOS App Store', 'Google Play'", colorClass: 'text-[#0D9488] dark:text-emerald-300' },
+          { text: ']', colorClass: 'text-[#171717] dark:text-[#F8F8F8]' },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'return ', colorClass: 'text-[#FF4B1F] dark:text-[#FF6B45]' },
+          {
+            text: '{ fps: 60, offlineFirst: true, otaUpdates: true }',
+            colorClass: 'text-[#B45309] dark:text-amber-300',
+          },
+        ],
+      },
+      {
+        indent: 0,
+        tokens: [{ text: '}', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' }],
+      },
+    ],
+    verifyOutput: '✓ Expo universal bundle verified (iOS + Android · 60fps native bridge)',
+  },
+  {
+    id: 'database',
+    filename: 'neon.postgres.ts',
+    badge: 'NEON DB',
+    lines: [
+      {
+        indent: 0,
+        tokens: [
+          { text: 'export const ', colorClass: 'text-[#FF4B1F] dark:text-[#FF6B45] font-semibold' },
+          { text: 'dataLayer', colorClass: 'text-[#171717] dark:text-[#F8F8F8] font-semibold' },
+          { text: ' = {', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'engine: ', colorClass: 'text-[#525252] dark:text-[#D4D4D4]' },
+          { text: "'Neon Serverless PostgreSQL 17'", colorClass: 'text-[#0D9488] dark:text-emerald-300' },
+          { text: ',', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'api: ', colorClass: 'text-[#525252] dark:text-[#D4D4D4]' },
+          { text: "'NestJS + Node.js + TanStack Query'", colorClass: 'text-[#0D9488] dark:text-emerald-300' },
+          { text: ',', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' },
+        ],
+      },
+      {
+        indent: 1,
+        tokens: [
+          { text: 'liveSystems: [', colorClass: 'text-[#525252] dark:text-[#D4D4D4]' },
+          {
+            text: "'crosx.in', 'rca.crosx.in', 'sohanpipeline.in'",
+            colorClass: 'text-[#B45309] dark:text-amber-300',
+          },
+          { text: ']', colorClass: 'text-[#525252] dark:text-[#D4D4D4]' },
+        ],
+      },
+      {
+        indent: 0,
+        tokens: [{ text: '}', colorClass: 'text-[#666666] dark:text-[#A1A1A1]' }],
+      },
+    ],
+    verifyOutput: '✓ Neon PostgreSQL & NestJS API health check: 200 OK (11ms p95)',
+  },
+];
+
+export const FloatingCodeTerminal = React.memo(function FloatingCodeTerminal({
+  compact = true,
+}: {
+  compact?: boolean;
+}) {
+  const [activeTabId, setActiveTabId] = useState<string>(CODE_TABS[0].id);
   const [copied, setCopied] = useState(false);
-  const [executionCount, setExecutionCount] = useState(1);
+  const [runCount, setRunCount] = useState(1);
+  const [expanded, setExpanded] = useState(!compact);
 
-  const activeTab = TERMINAL_TABS.find((t) => t.id === activeTabId) ?? TERMINAL_TABS[0];
+  const activeTab = CODE_TABS.find((t) => t.id === activeTabId) ?? CODE_TABS[0];
+  const visibleLines = expanded ? activeTab.lines : activeTab.lines.slice(0, 7);
 
-  const handleCopyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(activeTab.code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+  const handleCopy = () => {
+    const plainText = activeTab.lines
+      .map((l) => '  '.repeat(l.indent) + l.tokens.map((t) => t.text).join(''))
+      .join('\n');
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(plainText).catch(() => {});
     }
-  };
-
-  const handleRunDiagnostics = () => {
-    setExecutionCount((c) => c + 1);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
   };
 
   return (
     <div
       data-testid="floating-code-terminal"
-      className="relative rounded-lg border border-[#C8C2B5] dark:border-[#1E2436] bg-[#FDFCF9] dark:bg-[#0A0E19] shadow-[0_12px_30px_-10px_rgba(17,17,16,0.08)] dark:shadow-[0_18px_40px_-12px_rgba(0,0,0,0.65)] overflow-hidden"
+      className="relative w-full rounded-2xl border border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF]/95 dark:bg-[#111111]/95 shadow-[0_20px_50px_-18px_rgba(23,23,23,0.1)] dark:shadow-[0_24px_60px_-16px_rgba(0,0,0,0.85)] overflow-hidden transition-colors duration-200"
     >
-      {/* Top 1px precision accent line — no blur or glow artifacts */}
-      <div className="h-[1px] w-full bg-[#2544E8]/60 dark:bg-[#4F6BFF]/50" />
+      {/* Top Cinematic Accent Line */}
+      <div
+        aria-hidden="true"
+        className="h-[2px] w-full bg-gradient-to-r from-[#FF4B1F] via-[#F04424] to-[#9B63F5]"
+      />
 
-      {/* Header & File Selector Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DED9CE] dark:border-[#1A2030] bg-[#F5F3EE] dark:bg-[#0D1220] px-3.5 py-2.5">
-        <div
-          role="tablist"
-          aria-label="Engineering specification files"
-          className="flex flex-wrap items-center gap-1"
-        >
-          {TERMINAL_TABS.map((tab) => {
-            const isSelected = tab.id === activeTab.id;
-            return (
-              <button
-                key={tab.id}
-                role="tab"
-                type="button"
-                aria-selected={isSelected}
-                onClick={() => setActiveTabId(tab.id)}
-                className={`px-3 py-1 text-[11px] font-mono rounded-full transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#111110] text-[#F5F3EE] dark:bg-[#2544E8] dark:text-white font-medium shadow-sm'
-                    : 'text-[#5C5952] dark:text-[#949CB0] hover:text-[#111110] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
-                }`}
-              >
-                {tab.filename}
-              </button>
-            );
-          })}
+      {/* Top Window Chrome & Interactive File Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5E2DC] dark:border-[#242424] bg-[#FAF9F6] dark:bg-[#0B0B0B] px-3.5 py-2">
+        <div className="flex items-center gap-2 overflow-x-auto max-w-full">
+          <div className="hidden sm:flex items-center gap-1.5 pr-2 border-r border-[#E5E2DC] dark:border-[#262626]">
+            <span className="h-2 w-2 rounded-full bg-[#FF4B1F]" />
+            <span className="h-2 w-2 rounded-full bg-amber-400/80" />
+            <span className="h-2 w-2 rounded-full bg-emerald-500/80" />
+          </div>
+          <div role="tablist" aria-label="Studio architecture files" className="flex items-center gap-1">
+            {CODE_TABS.map((tab) => {
+              const selected = tab.id === activeTab.id;
+              return (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  type="button"
+                  aria-selected={selected}
+                  onClick={() => setActiveTabId(tab.id)}
+                  className={`px-2.5 py-1 rounded-full text-[10.5px] font-mono transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                    selected
+                      ? 'bg-[#171717] text-[#FAF9F6] dark:bg-[#FF4B1F] dark:text-white font-semibold shadow-2xs'
+                      : 'text-[#666666] dark:text-[#A1A1A1] hover:text-[#171717] dark:hover:text-white'
+                  }`}
+                >
+                  {tab.filename}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
+          {compact && activeTab.lines.length > 7 && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="rounded-full border border-[#E5E2DC] dark:border-[#2A2A2A] bg-white dark:bg-[#171717] px-2.5 py-0.5 text-[10px] font-mono text-[#666666] dark:text-[#A1A1A1] hover:text-[#FF4B1F] dark:hover:text-white transition-colors cursor-pointer"
+            >
+              {expanded ? 'Collapse' : 'Full Spec'}
+            </button>
+          )}
           <button
             type="button"
-            onClick={handleCopyCode}
-            aria-label={`Copy ${activeTab.filename} code`}
-            className="cta-tactile-secondary inline-flex items-center gap-1.5 rounded-full border border-[#C8C2B5] dark:border-[#252C40] bg-[#FDFCF9] dark:bg-[#121829] px-3 py-1 text-[11px] font-mono text-[#111110] dark:text-[#D5DBE8] hover:border-[#2544E8] dark:hover:border-[#6E88FF] whitespace-nowrap shrink-0 cursor-pointer"
+            onClick={handleCopy}
+            aria-label="Copy code snippet"
+            className="inline-flex items-center gap-1 rounded-full border border-[#E5E2DC] dark:border-[#2A2A2A] bg-white dark:bg-[#171717] px-2.5 py-0.5 text-[10px] font-mono text-[#171717] dark:text-[#E5E5E5] hover:border-[#FF4B1F] transition-colors cursor-pointer"
           >
             {copied ? (
               <>
@@ -81,10 +351,12 @@ export const FloatingCodeTerminal = React.memo(function FloatingCodeTerminal() {
               </>
             )}
           </button>
+
           <button
             type="button"
-            onClick={handleRunDiagnostics}
-            className="cta-tactile-primary inline-flex items-center gap-1.5 rounded-full bg-[#2544E8] px-3 py-1 text-[11px] font-mono font-medium text-white hover:bg-[#1D36BD] whitespace-nowrap shrink-0 cursor-pointer"
+            onClick={() => setRunCount((c) => c + 1)}
+            aria-label="Verify architecture module"
+            className="inline-flex items-center gap-1 rounded-full bg-[#FF4B1F] hover:bg-[#F04424] px-2.5 py-0.5 text-[10px] font-mono font-semibold text-white transition-colors cursor-pointer"
           >
             <Play className="h-2.5 w-2.5 fill-current" />
             <span>Verify</span>
@@ -92,90 +364,46 @@ export const FloatingCodeTerminal = React.memo(function FloatingCodeTerminal() {
         </div>
       </div>
 
-      {/* Code Viewport — Crisp syntax formatting with zero backdrop-blur or glow bleed */}
-      <div className="relative p-4 sm:p-5 bg-[#FDFCF9] dark:bg-[#090D17] overflow-x-auto">
-        {activeTab.id === 'architecture' ? (
-          <div className="text-xs sm:text-[12.5px] leading-[1.68] font-mono select-all space-y-0.5 min-w-[280px]">
-            <div>
-              <span className="text-rose-600 dark:text-rose-400">const</span>{' '}
-              <span className="text-[#2544E8] dark:text-[#7C93FF] font-semibold">developer</span>{' '}
-              <span className="text-[#6E6A61] dark:text-slate-400">=</span>{' '}
-              <span className="text-amber-700 dark:text-amber-300">{'{'}</span>
-            </div>
+      {/* Supporting Code Body */}
+      <div className="p-3.5 sm:px-4 sm:py-3 font-mono text-[11px] sm:text-[11.5px] leading-[1.58] overflow-x-auto bg-[#FFFFFF] dark:bg-[#111111]">
+        <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#F2EFE9] dark:border-[#1E1E1E] text-[9.5px] text-[#666666] dark:text-[#A1A1A1]">
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3 text-[#FF4B1F]" />
+            <span>SUPPORTING RUNTIME MANIFEST · {activeTab.badge}</span>
+          </span>
+          <span>TS 5.8 · UTF-8</span>
+        </div>
 
-            <div className="pl-4">
-              <span className="text-sky-700 dark:text-sky-300">studio:</span>{' '}
-              <span className="text-emerald-700 dark:text-emerald-400">
-                &apos;CROSX DEV STUDIO®&apos;
-              </span>
-              <span className="text-slate-400">,</span>
-            </div>
-
-            <div className="pl-4">
-              <span className="text-sky-700 dark:text-sky-300">founder:</span>{' '}
-              <span className="text-emerald-700 dark:text-emerald-400">
-                &apos;IRON CLAD (Senior Project Developer)&apos;
-              </span>
-              <span className="text-slate-400">,</span>
-            </div>
-
-            <div className="pl-4">
-              <span className="text-sky-700 dark:text-sky-300">focus:</span>{' '}
-              <span className="text-purple-700 dark:text-purple-300">[</span>
-            </div>
-            <div className="pl-7 text-emerald-700 dark:text-emerald-400">
-              <div>&apos;Full-stack Websites &amp; Web Apps&apos;,</div>
-              <div>&apos;Cross-platform Mobile Apps (Expo)&apos;,</div>
-              <div>&apos;Scalable APIs, SaaS &amp; Dashboards&apos;,</div>
-              <div>&apos;Best-in-Class at Affordable Prices&apos;</div>
-            </div>
-            <div className="pl-4">
-              <span className="text-purple-700 dark:text-purple-300">]</span>
-              <span className="text-slate-400">,</span>
-            </div>
-
-            <div className="pl-4">
-              <span className="text-sky-700 dark:text-sky-300">stack:</span>{' '}
-              <span className="text-purple-700 dark:text-purple-300">[</span>
-            </div>
-            <div className="pl-7 text-emerald-700 dark:text-emerald-400">
-              <div>&apos;Next.js / React / Vite / TanStack&apos;,</div>
-              <div>&apos;JavaScript / TypeScript / Tailwind CSS&apos;,</div>
-              <div>&apos;NestJS / Node.js / Neon DB / PostgreSQL&apos;,</div>
-              <div>&apos;React Native + Expo (iOS &amp; Android)&apos;</div>
-            </div>
-            <div className="pl-4">
-              <span className="text-purple-700 dark:text-purple-300">]</span>
-              <span className="text-slate-400">,</span>
-            </div>
-
-            <div className="pl-4">
-              <span className="text-sky-700 dark:text-sky-300">principle:</span>{' '}
-              <span className="text-amber-800 dark:text-amber-300">
-                &apos;Build reliable systems that turn complex business workflows into production-ready software.&apos;
-              </span>
-            </div>
-
-            <div>
-              <span className="text-amber-700 dark:text-amber-300">{'}'}</span>
+        {visibleLines.map((line, idx) => (
+          <div
+            key={idx}
+            className="whitespace-pre-wrap break-words flex items-start gap-2.5"
+          >
+            <span
+              aria-hidden="true"
+              className="select-none text-[9.5px] text-[#A1A1A1] dark:text-[#525252] w-4 text-right shrink-0 pt-0.5"
+            >
+              {String(idx + 1).padStart(2, '0')}
+            </span>
+            <div style={{ paddingLeft: `${line.indent * 0.95}rem` }} className="min-w-0 flex-1">
+              {line.tokens.map((token, tIdx) => (
+                <span key={tIdx} className={token.colorClass}>
+                  {token.text}
+                </span>
+              ))}
             </div>
           </div>
-        ) : (
-          <pre className="overflow-x-auto text-xs sm:text-[12.5px] leading-relaxed font-mono text-[#1C1B19] dark:text-[#E5E9F2] select-all">
-            <code>{activeTab.code}</code>
-          </pre>
-        )}
+        ))}
       </div>
 
-      {/* Compact Live Verification Bar */}
-      <div className="border-t border-[#DED9CE] dark:border-[#1A2030] bg-[#F5F3EE] dark:bg-[#0D1220] px-4 py-2.5 flex items-center justify-between text-[11px] font-mono">
-        <span className="inline-flex items-center gap-1.5 text-[#2544E8] dark:text-[#7C93FF] truncate">
-          <Terminal className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{activeTab.outputLines[0]}</span>
+      {/* Live Verification Status Bar */}
+      <div className="flex items-center justify-between gap-2 border-t border-[#E5E2DC] dark:border-[#242424] bg-[#FAF9F6] dark:bg-[#0B0B0B] px-3.5 py-1.5 text-[10.5px] font-mono">
+        <span className="inline-flex items-center gap-1.5 text-[#171717] dark:text-[#E5E5E5] truncate">
+          <TerminalIcon className="h-3 w-3 text-[#FF4B1F] shrink-0" />
+          <span className="truncate">{activeTab.verifyOutput}</span>
         </span>
-        <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 shrink-0 ml-2">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          <span>Run #{executionCount}</span>
+        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold shrink-0">
+          ● Run #{runCount}
         </span>
       </div>
     </div>

@@ -49,7 +49,7 @@ export const ScrollProgressBar = React.memo(function ScrollProgressBar() {
         ref={barRef}
         data-testid="scroll-progress-bar"
         style={{ transform: 'scaleX(0)', transformOrigin: '0% 50%' }}
-        className="h-full w-full bg-gradient-to-r from-[#2544E8] via-[#4F6BFF] to-[#7C5CFF] will-change-transform"
+        className="h-full w-full bg-gradient-to-r from-[#FF4B1F] via-[#F04424] to-[#9B63F5] will-change-transform"
       />
     </div>
   );

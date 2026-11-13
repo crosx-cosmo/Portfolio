@@ -129,7 +129,7 @@ export const CustomSelect = React.memo(function CustomSelect({
         <label
           id={`${id}-label`}
           htmlFor={id}
-          className="block text-xs font-mono uppercase tracking-wider text-[#4A4843] dark:text-[#B8B3A8] mb-2"
+          className="block text-xs font-mono uppercase tracking-wider text-[#666666] dark:text-[#A1A1A1] mb-2"
         >
           {label} {required ? '*' : ''}
         </label>
@@ -149,16 +149,16 @@ export const CustomSelect = React.memo(function CustomSelect({
         data-testid={testId || `custom-select-${id}`}
         onClick={toggleOpen}
         onKeyDown={handleKeyDown}
-        className={`w-full flex items-center justify-between gap-2 rounded-md border px-3.5 py-2.5 text-left text-sm transition-colors cursor-pointer ${
+        className={`w-full flex items-center justify-between gap-2 rounded-xl border px-4 py-3 text-left text-sm transition-colors cursor-pointer ${
           isOpen
-            ? 'border-[#2544E8] dark:border-[#6E88FF] bg-[#FDFCF9] dark:bg-[#141724] text-[#111110] dark:text-[#F4F1EA]'
-            : 'border-[#C8C2B5] dark:border-[#282B3A] bg-[#FDFCF9] dark:bg-[#10131E] text-[#111110] dark:text-[#F4F1EA] hover:border-[#8E887C] dark:hover:border-[#3D4258]'
-        } focus-visible:outline-2 focus-visible:outline-[#2544E8]`}
+            ? 'border-[#FF4B1F] bg-[#FFFFFF] dark:bg-[#171717] text-[#171717] dark:text-[#F8F8F8]'
+            : 'border-[#E5E2DC] dark:border-[#262626] bg-[#FFFFFF] dark:bg-[#121212] text-[#171717] dark:text-[#F8F8F8] hover:border-[#171717] dark:hover:border-[#525252]'
+        } focus-visible:outline-2 focus-visible:outline-[#FF4B1F]`}
       >
         <span className="truncate font-medium">{selectedOption?.label}</span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[#6E6A61] dark:text-[#8E93A6] transition-transform duration-150 ${
-            isOpen ? 'rotate-180 text-[#2544E8] dark:text-[#6E88FF]' : ''
+          className={`h-4 w-4 shrink-0 text-[#666666] dark:text-[#A1A1A1] transition-transform duration-150 ${
+            isOpen ? 'rotate-180 text-[#FF4B1F]' : ''
           }`}
         />
       </button>
@@ -169,7 +169,7 @@ export const CustomSelect = React.memo(function CustomSelect({
           role="listbox"
           aria-labelledby={label ? `${id}-label` : undefined}
           data-testid={`${testId || `custom-select-${id}`}-menu`}
-          className={`absolute left-0 right-0 z-50 max-h-64 overflow-y-auto rounded-md border border-[#C8C2B5] dark:border-[#2A2E42] bg-[#FDFCF9] dark:bg-[#0D101B] p-1.5 shadow-[0_16px_38px_-10px_rgba(17,17,16,0.18)] dark:shadow-[0_20px_48px_-12px_rgba(0,0,0,0.85)] ${
+          className={`absolute left-0 right-0 z-50 max-h-64 overflow-y-auto rounded-xl border border-[#E5E2DC] dark:border-[#2A2A2A] bg-[#FFFFFF] dark:bg-[#141414] p-1.5 shadow-[0_20px_48px_-12px_rgba(23,23,23,0.18)] dark:shadow-[0_24px_56px_-12px_rgba(0,0,0,0.9)] ${
             openUpward ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
           }`}
         >
@@ -183,12 +183,12 @@ export const CustomSelect = React.memo(function CustomSelect({
                 aria-selected={isSelected}
                 onMouseEnter={() => setHighlightedIndex(idx)}
                 onClick={() => handleSelect(option.value)}
-                className={`flex items-center justify-between gap-2.5 rounded-sm px-3 py-2 text-xs sm:text-sm cursor-pointer select-none transition-colors ${
+                className={`flex items-center justify-between gap-2.5 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm cursor-pointer select-none transition-colors ${
                   isSelected
-                    ? 'bg-[#111110] text-[#F5F3EE] dark:bg-[#2544E8] dark:text-white font-semibold'
+                    ? 'bg-[#FF4B1F] text-white font-semibold'
                     : isHighlighted
-                      ? 'bg-[#EAE6DC] text-[#111110] dark:bg-white/[0.07] dark:text-white'
-                      : 'text-[#2E2D2A] dark:text-[#D5D8E2]'
+                      ? 'bg-[#F2EFE9] text-[#171717] dark:bg-white/[0.08] dark:text-white'
+                      : 'text-[#171717] dark:text-[#E5E5E5]'
                 }`}
               >
                 <span className="truncate">{option.label}</span>
@@ -200,7 +200,7 @@ export const CustomSelect = React.memo(function CustomSelect({
       )}
 
       {error && (
-        <p role="alert" className="mt-1.5 text-xs font-mono text-[#D94E28]">
+        <p role="alert" className="mt-1.5 text-xs font-mono text-[#F04424]">
           {error}
         </p>
       )}

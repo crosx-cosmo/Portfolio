@@ -246,8 +246,8 @@ async function hydrateFromNeonIfAvailable(baseState: CmsStoreState): Promise<Cms
             : 'Enterprise Web Platform',
         url: String(r.url || r.live_url || 'https://crosx.in'),
         displayUrl: String(r.display_url || r.domain_label || 'crosx.in'),
-        liveScreenshot: String(r.live_screenshot || r.preview_image || '/screenshots/crosx-live.png'),
-        studioVisual: String(r.studio_visual || r.preview_image || '/images/project-crosx.png'),
+        liveScreenshot: String(r.live_screenshot || r.preview_image || '/projects/crosx-live.png'),
+        studioVisual: String(r.studio_visual || r.preview_image || '/projects/crosx-studio.jpg'),
         summary: String(r.summary || ''),
         architectureOverview: String(r.architecture_overview || r.summary || ''),
         engineeringHighlights: parseJsonArray<string>(
@@ -499,9 +499,9 @@ export async function upsertCmsProject(
       url: cleanUrl || prev.url,
       displayUrl: displayUrl || prev.displayUrl,
       liveScreenshot:
-        (input.liveScreenshot ?? prev.liveScreenshot).trim() || '/screenshots/crosx-live.png',
+        (input.liveScreenshot ?? prev.liveScreenshot).trim() || '/projects/crosx-live.png',
       studioVisual:
-        (input.studioVisual ?? prev.studioVisual).trim() || '/images/project-crosx.png',
+        (input.studioVisual ?? prev.studioVisual).trim() || '/projects/crosx-studio.jpg',
       summary: (input.summary ?? prev.summary).trim(),
       architectureOverview: (input.architectureOverview ?? prev.architectureOverview).trim(),
       engineeringHighlights: Array.isArray(input.engineeringHighlights)
@@ -549,8 +549,8 @@ export async function upsertCmsProject(
     category: validCategory,
     url: cleanUrl,
     displayUrl,
-    liveScreenshot: (input.liveScreenshot ?? '').trim() || '/screenshots/crosx-live.png',
-    studioVisual: (input.studioVisual ?? '').trim() || '/images/project-crosx.png',
+    liveScreenshot: (input.liveScreenshot ?? '').trim() || '/projects/crosx-live.png',
+    studioVisual: (input.studioVisual ?? '').trim() || '/projects/crosx-studio.jpg',
     summary: (input.summary ?? 'Engineered and shipped by CROSX DEV STUDIO.').trim(),
     architectureOverview: (
       input.architectureOverview ??
